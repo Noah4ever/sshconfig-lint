@@ -69,7 +69,7 @@ fn strip_inline_comment(line: &str) -> &str {
     let mut in_quote = false;
     let mut escape_next = false;
 
-    for (i, ch) in line.chars().enumerate() {
+    for (i, ch) in line.char_indices() {
         if escape_next {
             escape_next = false;
             continue;
