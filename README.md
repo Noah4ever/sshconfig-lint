@@ -27,37 +27,47 @@ sshconfig-lint --config /path/to/config
 
 # json output
 sshconfig-lint --format json
+
+# treat warnings as errors (useful in CI)
+sshconfig-lint --strict
+
+# skip Include resolution
+sshconfig-lint --no-includes
 ```
 
 ### Example output
 
 ```
-line 3: [error] (identity-file-exists) IdentityFile not found: ~/.ssh/id_missing
-line 8: [warning] (duplicate-host) duplicate Host block 'github.com' (first seen at line 1)
-line 5: [warning] (wildcard-host-order) Host 'github.com' appears after 'Host *' (line 5); it will never match because Host * already matched
+line 4: [warning] WILDCARD_ORDER (wildcard-host-order) Host 'github.com' appears after 'Host *' (line 1); it will never match because Host * already matched (hint: move Host * to the end of the file)
+line 7: [warning] DUP_HOST (duplicate-host) duplicate Host block 'github.com' (first seen at line 4) (hint: remove one of the duplicate Host blocks)
+line 3: [error] MISSING_IDENTITY (identity-file-exists) IdentityFile not found: ~/.ssh/id_missing (hint: check the path or remove the directive)
 ```
+
+Output is sorted by file and line number so it's deterministic across runs (stable for CI diffs and snapshots).
 
 ### Exit codes
 
 | Code | Meaning |
 |------|---------|
 | 0 | Clean, no errors found |
-| 1 | At least one error-level finding |
+| 1 | At least one error-level finding (or warning with `--strict`) |
 | 2 | Config file not found |
 
 ## Rules
 
-### `duplicate-host`
+Each finding has a stable code you can grep for or match on in scripts.
 
-Warns when two `Host` blocks use the same pattern. OpenSSH uses first-match-wins, so duplicates are almost always a mistake.
+| Code | Rule | Severity | Description |
+|------|------|----------|-------------|
+| `DUP_HOST` | `duplicate-host` | warning | Two Host blocks with the same pattern |
+| `MISSING_IDENTITY` | `identity-file-exists` | error | IdentityFile path doesn't exist |
+| `WILDCARD_ORDER` | `wildcard-host-order` | warning | Host * appears before specific patterns |
+| `INCLUDE_CYCLE` | `include-cycle` | error | Circular Include chain |
+| `INCLUDE_READ` | `include-read` | error | Included file can't be read |
+| `INCLUDE_GLOB` | `include-glob` | error | Invalid Include glob pattern |
+| `INCLUDE_NO_MATCH` | `include-no-match` | info | Include pattern matched no files |
 
-### `identity-file-exists`
-
-Errors when an `IdentityFile` points to a path that doesn't exist. Skips paths containing `%` tokens or `${}` variables since those are expanded at runtime.
-
-### `wildcard-host-order`
-
-Warns when `Host *` appears before more specific patterns. Since OpenSSH matches top-to-bottom, anything after `Host *` will never be reached.
+Findings include a hint when possible (e.g. "move Host * to the end of the file").
 
 ## What it handles
 
