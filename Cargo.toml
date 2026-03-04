@@ -2,6 +2,17 @@
 name = "sshconfig-lint"
 version = "0.1.0"
 edition = "2024"
+authors = ["Noah"]
+description = "Linter for OpenSSH client config files"
+license = "MIT"
+repository = "https://github.com/Noah4ever/sshconfig-lint"
+keywords = ["ssh", "config", "lint", "cli"]
+categories = ["command-line-utilities"]
+readme = "README.md"
+
+[[bin]]
+name = "sshconfig-lint"
+path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
