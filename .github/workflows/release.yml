@@ -3,30 +3,41 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 jobs:
   build:
-    name: Build ${{ matrix.target }}
+    name: Build ${{ matrix.asset_name }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-            output_name: sshconfig-lint
+            bin_name: sshconfig-lint
+            asset_name: linux-x86_64
+            package: tar
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
-            output_name: sshconfig-lint
+            bin_name: sshconfig-lint
+            asset_name: linux-arm64
+            package: tar
           - target: x86_64-apple-darwin
-            os: macos-latest
-            output_name: sshconfig-lint
+            os: macos-13
+            bin_name: sshconfig-lint
+            asset_name: macos-x86_64
+            package: tar
           - target: aarch64-apple-darwin
-            os: macos-latest
-            output_name: sshconfig-lint
+            os: macos-14
+            bin_name: sshconfig-lint
+            asset_name: macos-arm64
+            package: tar
           - target: x86_64-pc-windows-msvc
             os: windows-latest
-            output_name: sshconfig-lint.exe
+            bin_name: sshconfig-lint.exe
+            asset_name: windows-x86_64
+            package: exe
 
     steps:
       - uses: actions/checkout@v4
@@ -35,7 +46,7 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Install cross-compilation tools
+      - name: Install cross-compilation tools (Linux ARM64)
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
           sudo apt-get update
@@ -49,21 +60,29 @@ jobs:
       - name: Create artifact directory
         run: mkdir -p artifacts
 
-      - name: Copy binary (Unix)
+      # ---- Unix: copy binary, chmod, package to tar.gz ----
+      - name: Package (Unix)
         if: runner.os != 'Windows'
+        shell: bash
         run: |
-          cp target/${{ matrix.target }}/release/${{ matrix.output_name }} artifacts/sshconfig-lint-${{ matrix.target }}
-          chmod +x artifacts/sshconfig-lint-${{ matrix.target }}
+          out="sshconfig-lint-${{ matrix.asset_name }}"
+          cp "target/${{ matrix.target }}/release/${{ matrix.bin_name }}" "artifacts/${out}"
+          chmod +x "artifacts/${out}"
+          tar -C artifacts -czf "artifacts/${out}.tar.gz" "${out}"
+          rm "artifacts/${out}"
 
-      - name: Copy binary (Windows)
+      # ---- Windows: copy .exe (no tar) ----
+      - name: Package (Windows)
         if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          copy target\${{ matrix.target }}\release\${{ matrix.output_name }} artifacts\sshconfig-lint-${{ matrix.target }}.exe
+          $out = "sshconfig-lint-${{ matrix.asset_name }}.exe"
+          Copy-Item "target\${{ matrix.target }}\release\${{ matrix.bin_name }}" "artifacts\$out"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: binaries-${{ matrix.target }}
+          name: binaries-${{ matrix.asset_name }}
           path: artifacts/
 
   create-release:
@@ -74,8 +93,6 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
-
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -85,7 +102,7 @@ jobs:
       - name: Flatten artifacts
         run: |
           mkdir -p release-artifacts
-          find artifacts -type f -exec mv {} release-artifacts/ \;
+          find artifacts -type f -maxdepth 2 -exec mv {} release-artifacts/ \;
           ls -la release-artifacts/
 
       - name: Create Release
