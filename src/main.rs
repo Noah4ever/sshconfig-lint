@@ -2,7 +2,7 @@ use clap::Parser;
 use std::path::PathBuf;
 use std::process;
 
-use sshconfig_lint::{has_errors, lint_file, report};
+use sshconfig_lint::{has_errors, has_warnings, lint_file, lint_file_no_includes, report};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -18,6 +18,14 @@ struct Args {
     /// Output format: text or json
     #[arg(long, default_value = "text")]
     format: String,
+
+    /// Treat warnings as errors (useful in CI)
+    #[arg(long)]
+    strict: bool,
+
+    /// Skip Include directive resolution
+    #[arg(long)]
+    no_includes: bool,
 }
 
 fn main() {
@@ -33,7 +41,13 @@ fn main() {
         process::exit(2);
     }
 
-    let findings = match lint_file(&config_path) {
+    let findings = if args.no_includes {
+        lint_file_no_includes(&config_path)
+    } else {
+        lint_file(&config_path)
+    };
+
+    let findings = match findings {
         Ok(f) => f,
         Err(e) => {
             eprintln!("error: cannot read {}: {}", config_path.display(), e);
@@ -47,7 +61,13 @@ fn main() {
     };
     print!("{}", output);
 
-    if has_errors(&findings[..]) {
+    let should_fail = if args.strict {
+        has_warnings(&findings[..])
+    } else {
+        has_errors(&findings[..])
+    };
+
+    if should_fail {
         process::exit(1);
     }
 }
