@@ -24,12 +24,12 @@ jobs:
             asset_name: linux-arm64
             package: tar
           - target: x86_64-apple-darwin
-            os: macos-13
+            os: macos-latest
             bin_name: sshconfig-lint
             asset_name: macos-x86_64
             package: tar
           - target: aarch64-apple-darwin
-            os: macos-14
+            os: macos-latest
             bin_name: sshconfig-lint
             asset_name: macos-arm64
             package: tar
