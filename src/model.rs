@@ -90,37 +90,65 @@ impl std::fmt::Display for Severity {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Finding {
     pub severity: Severity,
+    pub code: &'static str,
     pub message: String,
+    pub hint: Option<String>,
     pub span: Span,
-    /// Optional rule identifier (e.g., "duplicate-host").
+    /// Rule identifier (e.g., "duplicate-host").
     pub rule: String,
 }
 
 impl Finding {
-    pub fn error(rule: impl Into<String>, message: impl Into<String>, span: Span) -> Self {
+    pub fn error(
+        rule: impl Into<String>,
+        code: &'static str,
+        message: impl Into<String>,
+        span: Span,
+    ) -> Self {
         Self {
             severity: Severity::Error,
+            code,
             message: message.into(),
+            hint: None,
             span,
             rule: rule.into(),
         }
     }
 
-    pub fn warning(rule: impl Into<String>, message: impl Into<String>, span: Span) -> Self {
+    pub fn warning(
+        rule: impl Into<String>,
+        code: &'static str,
+        message: impl Into<String>,
+        span: Span,
+    ) -> Self {
         Self {
             severity: Severity::Warning,
+            code,
             message: message.into(),
+            hint: None,
             span,
             rule: rule.into(),
         }
     }
 
-    pub fn info(rule: impl Into<String>, message: impl Into<String>, span: Span) -> Self {
+    pub fn info(
+        rule: impl Into<String>,
+        code: &'static str,
+        message: impl Into<String>,
+        span: Span,
+    ) -> Self {
         Self {
             severity: Severity::Info,
+            code,
             message: message.into(),
+            hint: None,
             span,
             rule: rule.into(),
         }
+    }
+
+    pub fn with_hint(mut self, hint: impl Into<String>) -> Self {
+        self.hint = Some(hint.into());
+        self
     }
 }
