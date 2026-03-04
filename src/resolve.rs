@@ -6,10 +6,7 @@ use crate::model::{Config, Finding, Item, Span};
 use crate::parser;
 
 /// Resolve all Include directives in-place, returning any findings (e.g., missing files, cycles).
-pub fn resolve_includes(
-    config: &mut Config,
-    base_dir: &Path,
-) -> Vec<Finding> {
+pub fn resolve_includes(config: &mut Config, base_dir: &Path) -> Vec<Finding> {
     let mut visited = HashSet::new();
     let mut findings = Vec::new();
     config.items = resolve_items(&config.items, base_dir, &mut visited, &mut findings);
@@ -27,7 +24,7 @@ fn resolve_items(
     for item in items {
         match item {
             Item::Include { pattern, span } => {
-                let expanded = expand_include(pattern, base_dir, span, visited, findings);
+                let expanded = expand_include(pattern, base_dir, &span, visited, findings);
                 result.extend(expanded);
             }
             Item::HostBlock {
@@ -178,7 +175,11 @@ mod tests {
             Item::Directive { key, value, .. } if key == "User" && value == "alice"
         ));
         // No errors expected
-        assert!(findings.iter().all(|f| f.severity != crate::model::Severity::Error));
+        assert!(
+            findings
+                .iter()
+                .all(|f| f.severity != crate::model::Severity::Error)
+        );
     }
 
     #[test]
@@ -203,7 +204,11 @@ mod tests {
             &config.items[1],
             Item::Directive { value, .. } if value == "bob"
         ));
-        assert!(findings.iter().all(|f| f.severity != crate::model::Severity::Error));
+        assert!(
+            findings
+                .iter()
+                .all(|f| f.severity != crate::model::Severity::Error)
+        );
     }
 
     #[test]
@@ -241,9 +246,11 @@ mod tests {
         let findings = resolve_includes(&mut config, tmp.path());
 
         assert!(findings.iter().any(|f| f.rule == "include-no-match"));
-        assert!(findings
-            .iter()
-            .filter(|f| f.rule == "include-no-match")
-            .all(|f| f.severity == crate::model::Severity::Info));
+        assert!(
+            findings
+                .iter()
+                .filter(|f| f.rule == "include-no-match")
+                .all(|f| f.severity == crate::model::Severity::Info)
+        );
     }
 }

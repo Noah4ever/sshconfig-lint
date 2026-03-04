@@ -63,7 +63,7 @@ fn collect_identity_findings(items: &[Item], findings: &mut Vec<Finding>) {
             Item::Directive {
                 key, value, span, ..
             } if key.eq_ignore_ascii_case("IdentityFile") => {
-                check_identity_file(value, span, findings);
+                check_identity_file(value, &span, findings);
             }
             Item::HostBlock { items, .. } | Item::MatchBlock { items, .. } => {
                 collect_identity_findings(items, findings);

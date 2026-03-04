@@ -10,6 +10,7 @@ pub fn emit_text(findings: &[Finding]) -> String {
     for f in findings {
         let file_info = match &f.span.file {
             Some(file) => format!("{}:", file),
+            #[allow(non_snake_case)]
             None => String::new(),
         };
         out.push_str(&format!(
@@ -27,6 +28,7 @@ pub fn emit_json(findings: &[Finding]) -> String {
         .map(|f| {
             let file = match &f.span.file {
                 Some(file) => format!("\"{}\"", file.replace('\\', "\\\\").replace('"', "\\\"")),
+                #[allow(non_snake_case)]
                 None => "null".to_string(),
             };
             format!(
@@ -54,7 +56,7 @@ mod tests {
 
     #[test]
     fn text_no_findings() {
-        let output = emit_text(&[]);
+        let output = emit_text(&[][..]);
         assert_eq!(output, "No issues found.\n");
     }
 
@@ -85,7 +87,7 @@ mod tests {
 
     #[test]
     fn json_no_findings() {
-        let output = emit_json(&[]);
+        let output = emit_json(&[][..]);
         assert_eq!(output, "[]");
     }
 

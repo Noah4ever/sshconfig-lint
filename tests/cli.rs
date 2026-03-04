@@ -1,10 +1,9 @@
-use assert_cmd::Command;
+use assert_cmd::cargo::cargo_bin_cmd;
 use predicates::prelude::*;
 
 #[test]
 fn cli_clean_config_exits_0() {
-    Command::cargo_bin("sshconfig-lint")
-        .unwrap()
+    cargo_bin_cmd!("sshconfig-lint")
         .arg("--config")
         .arg("tests/fixtures/basic.config")
         .assert()
@@ -14,8 +13,7 @@ fn cli_clean_config_exits_0() {
 
 #[test]
 fn cli_missing_config_file_exits_2() {
-    Command::cargo_bin("sshconfig-lint")
-        .unwrap()
+    cargo_bin_cmd!("sshconfig-lint")
         .arg("--config")
         .arg("tests/fixtures/does_not_exist.config")
         .assert()
@@ -25,8 +23,7 @@ fn cli_missing_config_file_exits_2() {
 
 #[test]
 fn cli_error_severity_exits_1() {
-    Command::cargo_bin("sshconfig-lint")
-        .unwrap()
+    cargo_bin_cmd!("sshconfig-lint")
         .arg("--config")
         .arg("tests/fixtures/missing_identity.config")
         .assert()
@@ -36,8 +33,7 @@ fn cli_error_severity_exits_1() {
 
 #[test]
 fn cli_json_format() {
-    Command::cargo_bin("sshconfig-lint")
-        .unwrap()
+    cargo_bin_cmd!("sshconfig-lint")
         .arg("--config")
         .arg("tests/fixtures/duplicate_host.config")
         .arg("--format")
