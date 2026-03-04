@@ -12,7 +12,9 @@ use model::Finding;
 /// Sort findings by file then line number for deterministic output.
 fn sort_findings(findings: &mut [Finding]) {
     findings.sort_by(|a, b| {
-        a.span.file.cmp(&b.span.file)
+        a.span
+            .file
+            .cmp(&b.span.file)
             .then(a.span.line.cmp(&b.span.line))
     });
 }
@@ -58,9 +60,12 @@ pub fn has_errors(findings: &[Finding]) -> bool {
 
 /// Returns true if any finding has Warning or Error severity.
 pub fn has_warnings(findings: &[Finding]) -> bool {
-    findings
-        .iter()
-        .any(|f| matches!(f.severity, model::Severity::Warning | model::Severity::Error))
+    findings.iter().any(|f| {
+        matches!(
+            f.severity,
+            model::Severity::Warning | model::Severity::Error
+        )
+    })
 }
 
 #[cfg(test)]

@@ -70,12 +70,10 @@ mod tests {
 
     #[test]
     fn text_single_finding() {
-        let findings = vec![Finding::warning(
-            "test-rule",
-            "TEST",
-            "something is wrong",
-            Span::new(42),
-        ).with_hint("fix it")];
+        let findings = vec![
+            Finding::warning("test-rule", "TEST", "something is wrong", Span::new(42))
+                .with_hint("fix it"),
+        ];
         let output = emit_text(&findings);
         assert!(output.contains("line 42"));
         assert!(output.contains("[warning]"));
@@ -118,7 +116,12 @@ mod tests {
 
     #[test]
     fn json_finding_with_file() {
-        let findings = vec![Finding::error("x", "TEST", "msg", Span::with_file(5, "test.conf"))];
+        let findings = vec![Finding::error(
+            "x",
+            "TEST",
+            "msg",
+            Span::with_file(5, "test.conf"),
+        )];
         let output = emit_json(&findings);
         assert!(output.contains("\"file\":\"test.conf\""));
     }
