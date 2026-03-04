@@ -9,6 +9,7 @@ pub fn lex(input: &str) -> Vec<Line> {
             let line_num = i + 1; // 1-based
             let trimmed = raw.trim();
 
+            // Determine line kind: empty, comment, or directive
             let kind = if trimmed.is_empty() {
                 LineKind::Empty
             } else if trimmed.starts_with('#') {
@@ -27,7 +28,11 @@ pub fn lex(input: &str) -> Vec<Line> {
 
 /// Parse a directive line into key/value.
 /// Handles both `Key Value` and `Key=Value` and `Key = Value` forms.
+/// Strips inline comments (# not inside quotes).
 fn parse_directive(line: &str) -> LineKind {
+    // Strip trailing comment (but not inside quotes)
+    let line = strip_inline_comment(line);
+
     // First try splitting on '='
     if let Some(eq_pos) = line.find('=') {
         let key = line[..eq_pos].trim();
@@ -57,6 +62,31 @@ fn parse_directive(line: &str) -> LineKind {
             value: String::new(),
         }
     }
+}
+
+/// Strip a trailing comment from a line, but not inside quotes.
+fn strip_inline_comment(line: &str) -> &str {
+    let mut in_quote = false;
+    let mut escape_next = false;
+
+    for (i, ch) in line.chars().enumerate() {
+        if escape_next {
+            escape_next = false;
+            continue;
+        }
+
+        match ch {
+            '\\' if in_quote => escape_next = true,
+            '"' => in_quote = !in_quote,
+            '#' if !in_quote => {
+                // Found a comment outside quotes
+                return line[..i].trim_end();
+            }
+            _ => {}
+        }
+    }
+
+    line
 }
 
 #[cfg(test)]
@@ -175,6 +205,58 @@ mod tests {
                 ref key,
                 ref value
             } if key == "User" && value == "git"
+        ));
+    }
+
+    #[test]
+    fn comment_after_directive() {
+        let lines = lex("IdentityFile ~/.ssh/id_ed25519 # personal key");
+        assert_eq!(lines.len(), 1);
+        assert!(matches!(
+            lines[0].kind,
+            LineKind::Directive {
+                ref key,
+                ref value
+            } if key == "IdentityFile" && value == "~/.ssh/id_ed25519"
+        ));
+    }
+
+    #[test]
+    fn quoted_value_with_spaces() {
+        let lines = lex("ProxyCommand \"ssh -W %h:%p jump\"");
+        assert_eq!(lines.len(), 1);
+        assert!(matches!(
+            lines[0].kind,
+            LineKind::Directive {
+                ref key,
+                ref value
+            } if key == "ProxyCommand" && value == "\"ssh -W %h:%p jump\""
+        ));
+    }
+
+    #[test]
+    fn multiple_host_patterns() {
+        let lines = lex("Host github.com gitlab.com *.corp");
+        assert_eq!(lines.len(), 1);
+        assert!(matches!(
+            lines[0].kind,
+            LineKind::Directive {
+                ref key,
+                ref value
+            } if key == "Host" && value == "github.com gitlab.com *.corp"
+        ));
+    }
+
+    #[test]
+    fn multiple_include_patterns() {
+        let lines = lex("Include ~/.ssh/conf.d/*.conf ~/.ssh/extra.conf");
+        assert_eq!(lines.len(), 1);
+        assert!(matches!(
+            lines[0].kind,
+            LineKind::Directive {
+                ref key,
+                ref value
+            } if key == "Include" && value == "~/.ssh/conf.d/*.conf ~/.ssh/extra.conf"
         ));
     }
 }
