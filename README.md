@@ -4,6 +4,8 @@ Lint your `~/.ssh/config` for common mistakes.
 
 Checks for duplicate host blocks, missing identity files, wildcard ordering problems, and more. Supports `Include` directives with cycle detection.
 
+https://github.com/user-attachments/assets/4d995679-baed-4f20-9ba8-8f3ec94c64fd
+
 ## Install
 
 ### Pre-built binaries
