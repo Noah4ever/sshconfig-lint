@@ -53,7 +53,7 @@ jobs:
           copy target\${{ matrix.target }}\release\${{ matrix.output_name }} artifacts\sshconfig-lint-${{ matrix.target }}.exe
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: binaries-${{ matrix.target }}
           path: artifacts/
@@ -69,9 +69,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
+          merge-multiple: true
 
       - name: Flatten artifacts
         run: |
@@ -80,7 +81,7 @@ jobs:
           ls -la release-artifacts/
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: release-artifacts/*
           draft: false
