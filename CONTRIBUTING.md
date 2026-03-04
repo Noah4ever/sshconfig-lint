@@ -107,8 +107,8 @@ Output: findings (errors/warnings/info)
 
 ## Questions?
 
-- Check existing issues: https://github.com/your-username/sshconfig-lint/issues
-- Start a discussion: https://github.com/your-username/sshconfig-lint/discussions
-- Email: noah@example.com
+- Check existing issues: https://github.com/Noah4ever/sshconfig-lint/issues
+- Start a discussion: https://github.com/Noah4ever/sshconfig-lint/discussions
+- Email: noah@thiering.org
 
-### Thank you for contributing! 🎉
+## Thanks
