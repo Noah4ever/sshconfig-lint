@@ -8,15 +8,45 @@ https://github.com/user-attachments/assets/4d995679-baed-4f20-9ba8-8f3ec94c64fd
 
 ## Install
 
+### Quick install (Linux / macOS)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Noah4ever/sshconfig-lint/main/install.sh | bash
+```
+
+Installs to `/usr/local/bin` by default. Override with `INSTALL_DIR`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Noah4ever/sshconfig-lint/main/install.sh | INSTALL_DIR=~/.local/bin bash
+```
+
+Pin a version:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Noah4ever/sshconfig-lint/main/install.sh | VERSION=v0.1.0 bash
+```
+
+### Cargo
+
+```bash
+cargo install sshconfig-lint
+```
+
+### Homebrew
+
+```bash
+brew install Noah4ever/tap/sshconfig-lint
+```
+
+### AUR (Arch Linux)
+
+```bash
+yay -S sshconfig-lint
+```
+
 ### Pre-built binaries
 
 Grab a binary from the [releases page](https://github.com/Noah4ever/sshconfig-lint/releases).
-
-### From source
-
-```bash
-cargo install --git https://github.com/Noah4ever/sshconfig-lint.git
-```
 
 ## Usage
 
