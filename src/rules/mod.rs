@@ -36,7 +36,7 @@ mod tests {
             "dummy"
         }
         fn check(&self, _config: &Config) -> Vec<Finding> {
-            vec![Finding::info("dummy", "this is a test", Span::new(1))]
+            vec![Finding::info("dummy", "TEST", "this is a test", Span::new(1))]
         }
     }
 

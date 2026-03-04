@@ -89,6 +89,7 @@ fn expand_include(
         Err(_) => {
             findings.push(Finding::error(
                 "include-glob",
+                "INCLUDE_GLOB",
                 format!("invalid Include glob pattern: {}", pattern),
                 span.clone(),
             ));
@@ -100,6 +101,7 @@ fn expand_include(
         // OpenSSH silently ignores includes that match nothing, so just info.
         findings.push(Finding::info(
             "include-no-match",
+            "INCLUDE_NO_MATCH",
             format!("Include pattern '{}' matched no files", pattern),
             span.clone(),
         ));
@@ -113,6 +115,7 @@ fn expand_include(
             Err(_) => {
                 findings.push(Finding::error(
                     "include-read",
+                    "INCLUDE_READ",
                     format!("cannot read included file: {}", path.display()),
                     span.clone(),
                 ));
@@ -121,11 +124,15 @@ fn expand_include(
         };
 
         if !visited.insert(canonical.clone()) {
-            findings.push(Finding::error(
-                "include-cycle",
-                format!("Include cycle detected: {}", canonical.display()),
-                span.clone(),
-            ));
+            findings.push(
+                Finding::error(
+                    "include-cycle",
+                    "INCLUDE_CYCLE",
+                    format!("Include cycle detected: {}", canonical.display()),
+                    span.clone(),
+                )
+                .with_hint("break the circular Include chain"),
+            );
             continue;
         }
 
@@ -142,6 +149,7 @@ fn expand_include(
             Err(e) => {
                 findings.push(Finding::error(
                     "include-read",
+                    "INCLUDE_READ",
                     format!("cannot read included file {}: {}", canonical.display(), e),
                     span.clone(),
                 ));

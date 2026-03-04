@@ -20,14 +20,18 @@ impl Rule for DuplicateHost {
             if let Item::HostBlock { patterns, span, .. } = item {
                 for pattern in patterns {
                     if let Some(first_span) = seen.get(pattern) {
-                        findings.push(Finding::warning(
-                            "duplicate-host",
-                            format!(
-                                "duplicate Host block '{}' (first seen at line {})",
-                                pattern, first_span.line
-                            ),
-                            span.clone(),
-                        ));
+                        findings.push(
+                            Finding::warning(
+                                "duplicate-host",
+                                "DUP_HOST",
+                                format!(
+                                    "duplicate Host block '{}' (first seen at line {})",
+                                    pattern, first_span.line
+                                ),
+                                span.clone(),
+                            )
+                            .with_hint("remove one of the duplicate Host blocks"),
+                        );
                     } else {
                         seen.insert(pattern.clone(), span.clone());
                     }
@@ -88,11 +92,15 @@ fn check_identity_file(value: &str, span: &Span, findings: &mut Vec<Finding>) {
     };
 
     if !expanded.exists() {
-        findings.push(Finding::error(
-            "identity-file-exists",
-            format!("IdentityFile not found: {}", value),
-            span.clone(),
-        ));
+        findings.push(
+            Finding::error(
+                "identity-file-exists",
+                "MISSING_IDENTITY",
+                format!("IdentityFile not found: {}", value),
+                span.clone(),
+            )
+            .with_hint("check the path or remove the directive"),
+        );
     }
 }
 
@@ -119,12 +127,13 @@ impl Rule for WildcardHostOrder {
                     } else if let Some(ref ws) = wildcard_span {
                         findings.push(Finding::warning(
                             "wildcard-host-order",
+                            "WILDCARD_ORDER",
                             format!(
                                 "Host '{}' appears after 'Host *' (line {}); it will never match because Host * already matched",
                                 pattern, ws.line
                             ),
                             span.clone(),
-                        ));
+                        ).with_hint("move Host * to the end of the file"));
                     }
                 }
             }
