@@ -1,0 +1,24 @@
+# Maintainer: Noah <noah@thiering.org>
+pkgname=sshconfig-lint
+pkgdesc="Linter for OpenSSH client config files"
+pkgver=0.1.0
+pkgrel=1
+arch=('x86_64' 'aarch64')
+url="https://github.com/Noah4ever/sshconfig-lint"
+license=('MIT')
+provides=('sshconfig-lint')
+conflicts=('sshconfig-lint-bin')
+
+source_x86_64=("${url}/releases/download/v${pkgver}/sshconfig-lint-linux-x86_64.tar.gz")
+source_aarch64=("${url}/releases/download/v${pkgver}/sshconfig-lint-linux-arm64.tar.gz")
+
+sha256sums_x86_64=('SKIP')
+sha256sums_aarch64=('SKIP')
+
+package() {
+  install -Dm755 "sshconfig-lint-linux-${CARCH/x86_64/x86_64}" \
+    "${pkgdir}/usr/bin/sshconfig-lint" 2>/dev/null || \
+  install -Dm755 "sshconfig-lint-linux-arm64" \
+    "${pkgdir}/usr/bin/sshconfig-lint"
+  install -Dm644 /dev/null "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
