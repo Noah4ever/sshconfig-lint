@@ -46,9 +46,9 @@ pub enum Item {
         value: String,
         span: Span,
     },
-    /// A Host block with its pattern and child directives.
+    /// A Host block with patterns and child directives.
     HostBlock {
-        pattern: String,
+        patterns: Vec<String>,
         span: Span,
         items: Vec<Item>,
     },
@@ -58,8 +58,8 @@ pub enum Item {
         span: Span,
         items: Vec<Item>,
     },
-    /// An Include directive (not yet resolved).
-    Include { pattern: String, span: Span },
+    /// An Include directive with one or more patterns.
+    Include { patterns: Vec<String>, span: Span },
 }
 
 /// The full parsed config.

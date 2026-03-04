@@ -23,18 +23,21 @@ fn resolve_items(
 
     for item in items {
         match item {
-            Item::Include { pattern, span } => {
-                let expanded = expand_include(pattern, base_dir, &span, visited, findings);
-                result.extend(expanded);
+            Item::Include { patterns, span } => {
+                // Expand each include pattern separately
+                for pattern in patterns {
+                    let expanded = expand_include(pattern, base_dir, span, visited, findings);
+                    result.extend(expanded);
+                }
             }
             Item::HostBlock {
-                pattern,
+                patterns,
                 span,
                 items: block_items,
             } => {
                 let resolved_items = resolve_items(block_items, base_dir, visited, findings);
                 result.push(Item::HostBlock {
-                    pattern: pattern.clone(),
+                    patterns: patterns.clone(),
                     span: span.clone(),
                     items: resolved_items,
                 });

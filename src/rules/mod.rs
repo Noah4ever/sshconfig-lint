@@ -63,12 +63,12 @@ mod tests {
         let config = Config {
             items: vec![
                 Item::HostBlock {
-                    pattern: "github.com".into(),
+                    patterns: vec!["github.com".to_string()],
                     span: Span::new(1),
                     items: vec![],
                 },
                 Item::HostBlock {
-                    pattern: "github.com".into(),
+                    patterns: vec!["github.com".to_string()],
                     span: Span::new(5),
                     items: vec![],
                 },

@@ -1,5 +1,34 @@
 use crate::model::{Config, Item, Line, LineKind};
 
+/// Parse a space-separated list of patterns, respecting quoted values.
+fn parse_patterns(value: &str) -> Vec<String> {
+    let mut patterns = Vec::new();
+    let mut current = String::new();
+    let mut in_quote = false;
+
+    for ch in value.chars() {
+        match ch {
+            '"' => {
+                in_quote = !in_quote;
+                current.push(ch);
+            }
+            ' ' | '\t' if !in_quote => {
+                if !current.is_empty() {
+                    patterns.push(current.clone());
+                    current.clear();
+                }
+            }
+            _ => current.push(ch),
+        }
+    }
+
+    if !current.is_empty() {
+        patterns.push(current);
+    }
+
+    patterns
+}
+
 /// Parse lexed lines into a structured Config AST.
 pub fn parse(lines: Vec<Line>) -> Config {
     let mut items = Vec::new();
@@ -23,10 +52,10 @@ pub fn parse(lines: Vec<Line>) -> Config {
                 match key_lower.as_str() {
                     "host" => {
                         let span = line.span.clone();
-                        let pattern = value.clone();
+                        let patterns = parse_patterns(value);
                         let (block_items, next_i) = collect_block(&lines, i + 1);
                         items.push(Item::HostBlock {
-                            pattern,
+                            patterns,
                             span,
                             items: block_items,
                         });
@@ -44,10 +73,9 @@ pub fn parse(lines: Vec<Line>) -> Config {
                         i = next_i;
                     }
                     "include" => {
-                        items.push(Item::Include {
-                            pattern: value.clone(),
-                            span: line.span.clone(),
-                        });
+                        let span = line.span.clone();
+                        let patterns = parse_patterns(value);
+                        items.push(Item::Include { patterns, span });
                         i += 1;
                     }
                     _ => {
@@ -91,10 +119,9 @@ fn collect_block(lines: &[Line], start: usize) -> (Vec<Item>, usize) {
                     // These start a new block, so we stop collecting.
                     "host" | "match" => break,
                     "include" => {
-                        items.push(Item::Include {
-                            pattern: value.clone(),
-                            span: line.span.clone(),
-                        });
+                        let span = line.span.clone();
+                        let patterns = parse_patterns(value);
+                        items.push(Item::Include { patterns, span });
                         i += 1;
                     }
                     _ => {
@@ -121,7 +148,13 @@ mod tests {
     #[test]
     fn empty_config() {
         let config = parse(lex(""));
-        assert!(config.items.is_empty() || config.items.iter().all(|i| matches!(i, Item::Comment { .. })));
+        assert!(
+            config.items.is_empty()
+                || config
+                    .items
+                    .iter()
+                    .all(|i| matches!(i, Item::Comment { .. }))
+        );
     }
 
     #[test]
@@ -144,9 +177,9 @@ mod tests {
         assert_eq!(config.items.len(), 1);
         match &config.items[0] {
             Item::HostBlock {
-                pattern, items, ..
+                patterns, items, ..
             } => {
-                assert_eq!(pattern, "github.com");
+                assert_eq!(patterns, &vec!["github.com".to_string()]);
                 assert_eq!(items.len(), 2);
                 match &items[0] {
                     Item::Directive { key, value, .. } => {
@@ -165,8 +198,14 @@ mod tests {
         let input = "Host a\n  User alice\nHost b\n  User bob";
         let config = parse(lex(input));
         assert_eq!(config.items.len(), 2);
-        assert!(matches!(&config.items[0], Item::HostBlock { pattern, .. } if pattern == "a"));
-        assert!(matches!(&config.items[1], Item::HostBlock { pattern, .. } if pattern == "b"));
+        assert!(matches!(
+            &config.items[0],
+            Item::HostBlock { patterns, .. } if patterns == &vec!["a".to_string()]
+        ));
+        assert!(matches!(
+            &config.items[1],
+            Item::HostBlock { patterns, .. } if patterns == &vec!["b".to_string()]
+        ));
     }
 
     #[test]
@@ -191,8 +230,8 @@ mod tests {
         let config = parse(lex(input));
         assert_eq!(config.items.len(), 1);
         match &config.items[0] {
-            Item::Include { pattern, .. } => {
-                assert_eq!(pattern, "config.d/*");
+            Item::Include { patterns, .. } => {
+                assert_eq!(patterns, &vec!["config.d/*".to_string()]);
             }
             other => panic!("expected Include, got {:?}", other),
         }
@@ -206,7 +245,10 @@ mod tests {
         match &config.items[0] {
             Item::HostBlock { items, .. } => {
                 assert_eq!(items.len(), 2);
-                assert!(matches!(&items[0], Item::Include { pattern, .. } if pattern == "extra.conf"));
+                assert!(matches!(
+                    &items[0],
+                    Item::Include { patterns, .. } if patterns == &vec!["extra.conf".to_string()]
+                ));
                 assert!(matches!(&items[1], Item::Directive { key, .. } if key == "User"));
             }
             other => panic!("expected HostBlock, got {:?}", other),
@@ -218,8 +260,14 @@ mod tests {
         let input = "ServerAliveInterval 60\n\nHost a\n  User alice";
         let config = parse(lex(input));
         assert_eq!(config.items.len(), 2);
-        assert!(matches!(&config.items[0], Item::Directive { key, .. } if key == "ServerAliveInterval"));
-        assert!(matches!(&config.items[1], Item::HostBlock { pattern, .. } if pattern == "a"));
+        assert!(matches!(
+            &config.items[0],
+            Item::Directive { key, .. } if key == "ServerAliveInterval"
+        ));
+        assert!(matches!(
+            &config.items[1],
+            Item::HostBlock { patterns, .. } if patterns == &vec!["a".to_string()]
+        ));
     }
 
     #[test]
@@ -234,6 +282,45 @@ mod tests {
                 assert!(matches!(&items[0], Item::Comment { .. }));
             }
             other => panic!("expected HostBlock, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn host_with_multiple_patterns() {
+        let input = "Host github.com gitlab.com *.corp";
+        let config = parse(lex(input));
+        assert_eq!(config.items.len(), 1);
+        match &config.items[0] {
+            Item::HostBlock { patterns, .. } => {
+                assert_eq!(
+                    patterns,
+                    &vec![
+                        "github.com".to_string(),
+                        "gitlab.com".to_string(),
+                        "*.corp".to_string()
+                    ]
+                );
+            }
+            other => panic!("expected HostBlock, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn include_with_multiple_patterns() {
+        let input = "Include ~/.ssh/conf.d/*.conf ~/.ssh/extra.conf";
+        let config = parse(lex(input));
+        assert_eq!(config.items.len(), 1);
+        match &config.items[0] {
+            Item::Include { patterns, .. } => {
+                assert_eq!(
+                    patterns,
+                    &vec![
+                        "~/.ssh/conf.d/*.conf".to_string(),
+                        "~/.ssh/extra.conf".to_string()
+                    ]
+                );
+            }
+            other => panic!("expected Include, got {:?}", other),
         }
     }
 }
