@@ -26,6 +26,13 @@ Pin a version:
 curl -fsSL https://raw.githubusercontent.com/Noah4ever/sshconfig-lint/main/install.sh | VERSION=v0.1.0 bash
 ```
 
+### Cargo
+
+```bash
+cargo install sshconfig-lint
+```
+
+
 ### Pre-built binaries
 
 Grab a binary from the [releases page](https://github.com/Noah4ever/sshconfig-lint/releases).

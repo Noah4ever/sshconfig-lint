@@ -10,7 +10,7 @@ homepage = "https://github.com/Noah4ever/sshconfig-lint"
 keywords = ["ssh", "config", "lint", "cli"]
 categories = ["command-line-utilities"]
 readme = "README.md"
-exclude = ["install.sh", ".github/"]
+exclude = ["aur/", "Formula/", "install.sh", ".github/"]
 
 [[bin]]
 name = "sshconfig-lint"
