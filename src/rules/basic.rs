@@ -4,8 +4,6 @@ use std::path::Path;
 use crate::model::{Config, Finding, Item, Span};
 use crate::rules::Rule;
 
-// ── DuplicateHost ───────────────────────────────────────────────
-
 /// Warns when multiple Host blocks have the same pattern.
 pub struct DuplicateHost;
 
@@ -19,18 +17,20 @@ impl Rule for DuplicateHost {
         let mut findings = Vec::new();
 
         for item in &config.items {
-            if let Item::HostBlock { pattern, span, .. } = item {
-                if let Some(first_span) = seen.get(pattern) {
-                    findings.push(Finding::warning(
-                        "duplicate-host",
-                        format!(
-                            "duplicate Host block '{}' (first seen at line {})",
-                            pattern, first_span.line
-                        ),
-                        span.clone(),
-                    ));
-                } else {
-                    seen.insert(pattern.clone(), span.clone());
+            if let Item::HostBlock { patterns, span, .. } = item {
+                for pattern in patterns {
+                    if let Some(first_span) = seen.get(pattern) {
+                        findings.push(Finding::warning(
+                            "duplicate-host",
+                            format!(
+                                "duplicate Host block '{}' (first seen at line {})",
+                                pattern, first_span.line
+                            ),
+                            span.clone(),
+                        ));
+                    } else {
+                        seen.insert(pattern.clone(), span.clone());
+                    }
                 }
             }
         }
@@ -38,8 +38,6 @@ impl Rule for DuplicateHost {
         findings
     }
 }
-
-// ── IdentityFileExists ──────────────────────────────────────────
 
 /// Errors when an IdentityFile points to a file that doesn't exist.
 /// Skips paths containing `%` or `${` (template variables).
@@ -98,8 +96,6 @@ fn check_identity_file(value: &str, span: &Span, findings: &mut Vec<Finding>) {
     }
 }
 
-// ── WildcardHostOrder ───────────────────────────────────────────
-
 /// Warns when `Host *` appears before more specific Host blocks.
 /// In OpenSSH, first match wins, so `Host *` should usually come last.
 pub struct WildcardHostOrder;
@@ -114,20 +110,22 @@ impl Rule for WildcardHostOrder {
         let mut wildcard_span: Option<Span> = None;
 
         for item in &config.items {
-            if let Item::HostBlock { pattern, span, .. } = item {
-                if pattern == "*" {
-                    if wildcard_span.is_none() {
-                        wildcard_span = Some(span.clone());
+            if let Item::HostBlock { patterns, span, .. } = item {
+                for pattern in patterns {
+                    if pattern == "*" {
+                        if wildcard_span.is_none() {
+                            wildcard_span = Some(span.clone());
+                        }
+                    } else if let Some(ref ws) = wildcard_span {
+                        findings.push(Finding::warning(
+                            "wildcard-host-order",
+                            format!(
+                                "Host '{}' appears after 'Host *' (line {}); it will never match because Host * already matched",
+                                pattern, ws.line
+                            ),
+                            span.clone(),
+                        ));
                     }
-                } else if let Some(ref ws) = wildcard_span {
-                    findings.push(Finding::warning(
-                        "wildcard-host-order",
-                        format!(
-                            "Host '{}' appears after 'Host *' (line {}); it will never match because Host * already matched",
-                            pattern, ws.line
-                        ),
-                        span.clone(),
-                    ));
                 }
             }
         }
@@ -143,19 +141,17 @@ mod tests {
     use std::fs;
     use tempfile::TempDir;
 
-    // ── DuplicateHost tests ─────────────────────────────────────
-
     #[test]
     fn no_duplicates_no_findings() {
         let config = Config {
             items: vec![
                 Item::HostBlock {
-                    pattern: "a".into(),
+                    patterns: vec!["a".to_string()],
                     span: Span::new(1),
                     items: vec![],
                 },
                 Item::HostBlock {
-                    pattern: "b".into(),
+                    patterns: vec!["b".to_string()],
                     span: Span::new(3),
                     items: vec![],
                 },
@@ -170,12 +166,12 @@ mod tests {
         let config = Config {
             items: vec![
                 Item::HostBlock {
-                    pattern: "github.com".into(),
+                    patterns: vec!["github.com".to_string()],
                     span: Span::new(1),
                     items: vec![],
                 },
                 Item::HostBlock {
-                    pattern: "github.com".into(),
+                    patterns: vec!["github.com".to_string()],
                     span: Span::new(5),
                     items: vec![],
                 },
@@ -187,8 +183,6 @@ mod tests {
         assert!(findings[0].message.contains("first seen at line 1"));
     }
 
-    // ── IdentityFileExists tests ────────────────────────────────
-
     #[test]
     fn identity_file_exists_no_error() {
         let tmp = TempDir::new().unwrap();
@@ -197,7 +191,7 @@ mod tests {
 
         let config = Config {
             items: vec![Item::HostBlock {
-                pattern: "a".into(),
+                patterns: vec!["a".to_string()],
                 span: Span::new(1),
                 items: vec![Item::Directive {
                     key: "IdentityFile".into(),
@@ -244,19 +238,17 @@ mod tests {
         assert!(findings.is_empty());
     }
 
-    // ── WildcardHostOrder tests ─────────────────────────────────
-
     #[test]
     fn wildcard_after_specific_no_warning() {
         let config = Config {
             items: vec![
                 Item::HostBlock {
-                    pattern: "github.com".into(),
+                    patterns: vec!["github.com".to_string()],
                     span: Span::new(1),
                     items: vec![],
                 },
                 Item::HostBlock {
-                    pattern: "*".into(),
+                    patterns: vec!["*".to_string()],
                     span: Span::new(5),
                     items: vec![],
                 },
@@ -271,12 +263,12 @@ mod tests {
         let config = Config {
             items: vec![
                 Item::HostBlock {
-                    pattern: "*".into(),
+                    patterns: vec!["*".to_string()],
                     span: Span::new(1),
                     items: vec![],
                 },
                 Item::HostBlock {
-                    pattern: "github.com".into(),
+                    patterns: vec!["github.com".to_string()],
                     span: Span::new(5),
                     items: vec![],
                 },
