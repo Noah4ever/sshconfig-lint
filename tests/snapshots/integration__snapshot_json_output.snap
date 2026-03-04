@@ -1,0 +1,10 @@
+---
+source: tests/integration.rs
+assertion_line: 88
+expression: output
+---
+[
+  {"severity":"warning","rule":"duplicate-host","line":7,"file":null,"message":"duplicate Host block 'github.com' (first seen at line 4)"},
+  {"severity":"warning","rule":"wildcard-host-order","line":4,"file":null,"message":"Host 'github.com' appears after 'Host *' (line 1); it will never match because Host * already matched"},
+  {"severity":"warning","rule":"wildcard-host-order","line":7,"file":null,"message":"Host 'github.com' appears after 'Host *' (line 1); it will never match because Host * already matched"}
+]
