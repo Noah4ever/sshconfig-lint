@@ -1,8 +1,7 @@
 ---
 source: tests/integration.rs
-assertion_line: 70
 expression: output
 ---
-line 7: [warning] (duplicate-host) duplicate Host block 'github.com' (first seen at line 4)
-line 4: [warning] (wildcard-host-order) Host 'github.com' appears after 'Host *' (line 1); it will never match because Host * already matched
-line 7: [warning] (wildcard-host-order) Host 'github.com' appears after 'Host *' (line 1); it will never match because Host * already matched
+line 4: [warning] WILDCARD_ORDER (wildcard-host-order) Host 'github.com' appears after 'Host *' (line 1); it will never match because Host * already matched (hint: move Host * to the end of the file)
+line 7: [warning] DUP_HOST (duplicate-host) duplicate Host block 'github.com' (first seen at line 4) (hint: remove one of the duplicate Host blocks)
+line 7: [warning] WILDCARD_ORDER (wildcard-host-order) Host 'github.com' appears after 'Host *' (line 1); it will never match because Host * already matched (hint: move Host * to the end of the file)

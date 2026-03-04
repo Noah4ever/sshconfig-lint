@@ -40,5 +40,27 @@ fn cli_json_format() {
         .arg("json")
         .assert()
         .success()
-        .stdout(predicate::str::contains("\"rule\":\"duplicate-host\""));
+        .stdout(predicate::str::contains("\"rule\":\"duplicate-host\""))
+        .stdout(predicate::str::contains("\"code\":\"DUP_HOST\""));
+}
+
+#[test]
+fn cli_strict_treats_warnings_as_errors() {
+    cargo_bin_cmd!("sshconfig-lint")
+        .arg("--config")
+        .arg("tests/fixtures/duplicate_host.config")
+        .arg("--strict")
+        .assert()
+        .code(1)
+        .stdout(predicate::str::contains("duplicate-host"));
+}
+
+#[test]
+fn cli_no_includes_skips_resolution() {
+    cargo_bin_cmd!("sshconfig-lint")
+        .arg("--config")
+        .arg("tests/fixtures/basic.config")
+        .arg("--no-includes")
+        .assert()
+        .success();
 }
