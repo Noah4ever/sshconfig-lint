@@ -5,7 +5,10 @@ use std::path::Path;
 fn fixture_empty_config() {
     let path = Path::new("tests/fixtures/empty.config");
     let findings = lint_file(path).expect("should read empty fixture");
-    assert!(findings.is_empty(), "empty config should produce no findings");
+    assert!(
+        findings.is_empty(),
+        "empty config should produce no findings"
+    );
 }
 
 #[test]
@@ -86,4 +89,44 @@ Host github.com
     );
     let output = sshconfig_lint::report::emit_json(&findings);
     insta::assert_snapshot!(output);
+}
+
+#[test]
+fn fixture_multiple_patterns() {
+    let path = Path::new("tests/fixtures/multiple_patterns.config");
+    let findings = lint_file(path).expect("should read fixture");
+    // Multiple patterns in a single Host block should not be flagged as duplicates
+    // (only same full patterns in different blocks)
+    assert!(
+        !findings.iter().any(|f| f.rule == "duplicate-host"),
+        "multiple patterns in same Host should not cause duplicate warnings, got: {:?}",
+        findings
+    );
+}
+
+#[test]
+fn fixture_comments_after_directives() {
+    let path = Path::new("tests/fixtures/comments_after_directives.config");
+    let findings = lint_file(path).expect("should read fixture");
+    // Comments after directives should be stripped, values should be clean
+    println!("Findings: {:?}", findings);
+    // The ProxyCommand with quotes should not be treated as multiple directives
+    assert!(
+        findings.is_empty(),
+        "comments and quoted values should not cause issues, got: {:?}",
+        findings
+    );
+}
+
+#[test]
+fn fixture_quoted_values() {
+    let path = Path::new("tests/fixtures/quoted_values.config");
+    let findings = lint_file(path).expect("should read fixture");
+    // Quoted values with spaces should be parsed as single values
+    println!("Findings: {:?}", findings);
+    assert!(
+        findings.is_empty(),
+        "quoted values should be handled correctly, got: {:?}",
+        findings
+    );
 }
