@@ -94,7 +94,7 @@ pub struct Finding {
     pub message: String,
     pub hint: Option<String>,
     pub span: Span,
-    /// Rule identifier (e.g., "duplicate-host").
+    /// Rule name like "duplicate-host".
     pub rule: String,
 }
 

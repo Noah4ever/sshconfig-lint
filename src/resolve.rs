@@ -5,7 +5,7 @@ use crate::lexer;
 use crate::model::{Config, Finding, Item, Span};
 use crate::parser;
 
-/// Resolve all Include directives in-place, returning any findings (e.g., missing files, cycles).
+/// Resolve all Include directives in-place, returning any findings (missing files, cycles, etc).
 pub fn resolve_includes(config: &mut Config, base_dir: &Path) -> Vec<Finding> {
     let mut visited = HashSet::new();
     let mut findings = Vec::new();

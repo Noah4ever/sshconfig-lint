@@ -71,7 +71,7 @@ Each finding has a stable code you can grep for or match on in scripts.
 | `INCLUDE_GLOB` | `include-glob` | error | Invalid Include glob pattern |
 | `INCLUDE_NO_MATCH` | `include-no-match` | info | Include pattern matched no files |
 
-Findings include a hint when possible (e.g. "move Host * to the end of the file").
+Findings include a hint when possible, like "move Host * to the end of the file".
 
 ## What it handles
 

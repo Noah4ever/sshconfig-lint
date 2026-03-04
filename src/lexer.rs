@@ -9,7 +9,6 @@ pub fn lex(input: &str) -> Vec<Line> {
             let line_num = i + 1; // 1-based
             let trimmed = raw.trim();
 
-            // Determine line kind: empty, comment, or directive
             let kind = if trimmed.is_empty() {
                 LineKind::Empty
             } else if trimmed.starts_with('#') {

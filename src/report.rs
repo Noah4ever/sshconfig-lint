@@ -1,6 +1,5 @@
 use crate::model::{Finding, Severity};
 
-// ANSI escape codes.
 const RED: &str = "\x1b[31m";
 const YELLOW: &str = "\x1b[33m";
 const CYAN: &str = "\x1b[36m";

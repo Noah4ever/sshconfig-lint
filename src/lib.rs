@@ -19,7 +19,7 @@ fn sort_findings(findings: &mut [Finding]) {
     });
 }
 
-/// Lint an SSH config from a string (no filesystem). Great for unit tests.
+/// Lint an SSH config from a string. Does not touch the filesystem.
 pub fn lint_str(input: &str) -> Vec<Finding> {
     let lines = lexer::lex(input);
     let config = parser::parse(lines);
