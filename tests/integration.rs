@@ -69,7 +69,7 @@ Host github.com
   User git2
 ",
     );
-    let output = sshconfig_lint::report::emit_text(&findings);
+    let output = sshconfig_lint::report::emit_text(&findings, false);
     insta::assert_snapshot!(output);
 }
 

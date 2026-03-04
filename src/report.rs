@@ -1,9 +1,22 @@
-use crate::model::Finding;
+use crate::model::{Finding, Severity};
 
-/// Emit findings as human-readable text.
-pub fn emit_text(findings: &[Finding]) -> String {
+// ANSI escape codes.
+const RED: &str = "\x1b[31m";
+const YELLOW: &str = "\x1b[33m";
+const CYAN: &str = "\x1b[36m";
+const GREEN: &str = "\x1b[32m";
+const BOLD: &str = "\x1b[1m";
+const DIM: &str = "\x1b[2m";
+const RESET: &str = "\x1b[0m";
+
+/// Emit findings as human-readable text, optionally with ANSI colors.
+pub fn emit_text(findings: &[Finding], colored: bool) -> String {
     if findings.is_empty() {
-        return String::from("No issues found.\n");
+        return if colored {
+            format!("{GREEN}{BOLD}No issues found.{RESET}\n")
+        } else {
+            String::from("No issues found.\n")
+        };
     }
 
     let mut out = String::new();
@@ -12,12 +25,34 @@ pub fn emit_text(findings: &[Finding]) -> String {
             Some(file) => format!("{}:", file),
             None => String::new(),
         };
+
+        let severity_str = if colored {
+            let (color, label) = match f.severity {
+                Severity::Error => (RED, "error"),
+                Severity::Warning => (YELLOW, "warning"),
+                Severity::Info => (CYAN, "info"),
+            };
+            format!("{BOLD}{color}{label}{RESET}")
+        } else {
+            f.severity.to_string()
+        };
+
+        let code_str = if colored {
+            format!("{BOLD}{}{RESET}", f.code)
+        } else {
+            f.code.to_string()
+        };
+
         out.push_str(&format!(
             "{}line {}: [{}] {} ({}) {}",
-            file_info, f.span.line, f.severity, f.code, f.rule, f.message
+            file_info, f.span.line, severity_str, code_str, f.rule, f.message
         ));
         if let Some(hint) = &f.hint {
-            out.push_str(&format!(" (hint: {})", hint));
+            if colored {
+                out.push_str(&format!(" {DIM}(hint: {}){RESET}", hint));
+            } else {
+                out.push_str(&format!(" (hint: {})", hint));
+            }
         }
         out.push('\n');
     }
@@ -64,7 +99,7 @@ mod tests {
 
     #[test]
     fn text_no_findings() {
-        let output = emit_text(&[][..]);
+        let output = emit_text(&[][..], false);
         assert_eq!(output, "No issues found.\n");
     }
 
@@ -74,7 +109,7 @@ mod tests {
             Finding::warning("test-rule", "TEST", "something is wrong", Span::new(42))
                 .with_hint("fix it"),
         ];
-        let output = emit_text(&findings);
+        let output = emit_text(&findings, false);
         assert!(output.contains("line 42"));
         assert!(output.contains("[warning]"));
         assert!(output.contains("TEST"));
@@ -91,7 +126,7 @@ mod tests {
             "bad config",
             Span::with_file(10, "/etc/ssh/config"),
         )];
-        let output = emit_text(&findings);
+        let output = emit_text(&findings, false);
         assert!(output.contains("/etc/ssh/config:line 10"));
     }
 
@@ -124,5 +159,31 @@ mod tests {
         )];
         let output = emit_json(&findings);
         assert!(output.contains("\"file\":\"test.conf\""));
+    }
+
+    #[test]
+    fn text_colored_no_findings() {
+        let output = emit_text(&[][..], true);
+        assert!(output.contains("No issues found."));
+        assert!(output.contains("\x1b[32m")); // green
+        assert!(output.contains("\x1b[0m")); // reset
+    }
+
+    #[test]
+    fn text_colored_error_is_red() {
+        let findings = vec![Finding::error("r", "ERR", "bad", Span::new(1))];
+        let output = emit_text(&findings, true);
+        assert!(output.contains("\x1b[31m")); // red
+        assert!(output.contains("error"));
+    }
+
+    #[test]
+    fn text_colored_warning_is_yellow() {
+        let findings =
+            vec![Finding::warning("r", "WARN", "hmm", Span::new(1)).with_hint("try this")];
+        let output = emit_text(&findings, true);
+        assert!(output.contains("\x1b[33m")); // yellow
+        assert!(output.contains("warning"));
+        assert!(output.contains("\x1b[2m")); // dim for hint
     }
 }

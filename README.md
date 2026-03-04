@@ -45,6 +45,8 @@ line 3: [error] MISSING_IDENTITY (identity-file-exists) IdentityFile not found: 
 
 Output is sorted by file and line number so it's deterministic across runs (stable for CI diffs and snapshots).
 
+Errors are red, warnings are yellow, info is cyan. Colors are auto-disabled when stdout isn't a terminal or when `NO_COLOR` is set.
+
 ### Exit codes
 
 | Code | Meaning |

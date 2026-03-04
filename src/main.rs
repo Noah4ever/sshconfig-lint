@@ -1,4 +1,5 @@
 use clap::Parser;
+use std::io::IsTerminal;
 use std::path::PathBuf;
 use std::process;
 
@@ -55,9 +56,13 @@ fn main() {
         }
     };
 
+    let colored = args.format != "json"
+        && std::io::stdout().is_terminal()
+        && std::env::var_os("NO_COLOR").is_none();
+
     let output = match args.format.as_str() {
         "json" => report::emit_json(&findings[..]),
-        _ => report::emit_text(&findings[..]),
+        _ => report::emit_text(&findings[..], colored),
     };
     print!("{}", output);
 
