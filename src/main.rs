@@ -1,9 +1,15 @@
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use std::io::IsTerminal;
 use std::path::PathBuf;
 use std::process;
 
 use sshconfig_lint::{has_errors, has_warnings, lint_file, lint_file_no_includes, report};
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum OutputFormat {
+    Text,
+    Json,
+}
 
 #[derive(Parser, Debug)]
 #[command(
@@ -16,9 +22,9 @@ struct Args {
     #[arg(short, long)]
     config: Option<PathBuf>,
 
-    /// Output format: text or json
+    /// Output format
     #[arg(long, default_value = "text")]
-    format: String,
+    format: OutputFormat,
 
     /// Treat warnings as errors (useful in CI)
     #[arg(long)]
@@ -56,13 +62,13 @@ fn main() {
         }
     };
 
-    let colored = args.format != "json"
+    let colored = matches!(args.format, OutputFormat::Text)
         && std::io::stdout().is_terminal()
         && std::env::var_os("NO_COLOR").is_none();
 
-    let output = match args.format.as_str() {
-        "json" => report::emit_json(&findings[..]),
-        _ => report::emit_text(&findings[..], colored),
+    let output = match args.format {
+        OutputFormat::Json => report::emit_json(&findings[..]),
+        OutputFormat::Text => report::emit_text(&findings[..], colored),
     };
     print!("{}", output);
 

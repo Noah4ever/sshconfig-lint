@@ -99,46 +99,15 @@ pub struct Finding {
 }
 
 impl Finding {
-    pub fn error(
+    pub fn new(
+        severity: Severity,
         rule: impl Into<String>,
         code: &'static str,
         message: impl Into<String>,
         span: Span,
     ) -> Self {
         Self {
-            severity: Severity::Error,
-            code,
-            message: message.into(),
-            hint: None,
-            span,
-            rule: rule.into(),
-        }
-    }
-
-    pub fn warning(
-        rule: impl Into<String>,
-        code: &'static str,
-        message: impl Into<String>,
-        span: Span,
-    ) -> Self {
-        Self {
-            severity: Severity::Warning,
-            code,
-            message: message.into(),
-            hint: None,
-            span,
-            rule: rule.into(),
-        }
-    }
-
-    pub fn info(
-        rule: impl Into<String>,
-        code: &'static str,
-        message: impl Into<String>,
-        span: Span,
-    ) -> Self {
-        Self {
-            severity: Severity::Info,
+            severity,
             code,
             message: message.into(),
             hint: None,

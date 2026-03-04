@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use crate::model::{Config, Finding, Item, Span};
+use crate::model::{Config, Finding, Item, Severity, Span};
 use crate::rules::Rule;
 
 /// Warns when multiple Host blocks have the same pattern.
@@ -21,7 +21,8 @@ impl Rule for DuplicateHost {
                 for pattern in patterns {
                     if let Some(first_span) = seen.get(pattern) {
                         findings.push(
-                            Finding::warning(
+                            Finding::new(
+                                Severity::Warning,
                                 "duplicate-host",
                                 "DUP_HOST",
                                 format!(
@@ -93,7 +94,8 @@ fn check_identity_file(value: &str, span: &Span, findings: &mut Vec<Finding>) {
 
     if !expanded.exists() {
         findings.push(
-            Finding::error(
+            Finding::new(
+                Severity::Error,
                 "identity-file-exists",
                 "MISSING_IDENTITY",
                 format!("IdentityFile not found: {}", value),
@@ -125,7 +127,8 @@ impl Rule for WildcardHostOrder {
                             wildcard_span = Some(span.clone());
                         }
                     } else if let Some(ref ws) = wildcard_span {
-                        findings.push(Finding::warning(
+                        findings.push(Finding::new(
+                            Severity::Warning,
                             "wildcard-host-order",
                             "WILDCARD_ORDER",
                             format!(

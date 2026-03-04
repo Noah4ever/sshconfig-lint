@@ -28,7 +28,7 @@ pub fn run_all(config: &Config) -> Vec<Finding> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{Config, Item, Span};
+    use crate::model::{Config, Finding, Item, Severity, Span};
 
     struct DummyRule;
     impl Rule for DummyRule {
@@ -36,7 +36,8 @@ mod tests {
             "dummy"
         }
         fn check(&self, _config: &Config) -> Vec<Finding> {
-            vec![Finding::info(
+            vec![Finding::new(
+                Severity::Info,
                 "dummy",
                 "TEST",
                 "this is a test",

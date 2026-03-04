@@ -120,25 +120,49 @@ Host github.com
 
     #[test]
     fn has_errors_true_when_error_present() {
-        let findings = vec![Finding::error("test", "TEST", "bad", model::Span::new(1))];
+        let findings = vec![Finding::new(
+            model::Severity::Error,
+            "test",
+            "TEST",
+            "bad",
+            model::Span::new(1),
+        )];
         assert!(has_errors(&findings));
     }
 
     #[test]
     fn has_errors_false_when_only_warnings() {
-        let findings = vec![Finding::warning("test", "TEST", "meh", model::Span::new(1))];
+        let findings = vec![Finding::new(
+            model::Severity::Warning,
+            "test",
+            "TEST",
+            "meh",
+            model::Span::new(1),
+        )];
         assert!(!has_errors(&findings));
     }
 
     #[test]
     fn has_warnings_true_when_warning_present() {
-        let findings = vec![Finding::warning("test", "TEST", "meh", model::Span::new(1))];
+        let findings = vec![Finding::new(
+            model::Severity::Warning,
+            "test",
+            "TEST",
+            "meh",
+            model::Span::new(1),
+        )];
         assert!(has_warnings(&findings));
     }
 
     #[test]
     fn has_warnings_false_when_only_info() {
-        let findings = vec![Finding::info("test", "TEST", "ok", model::Span::new(1))];
+        let findings = vec![Finding::new(
+            model::Severity::Info,
+            "test",
+            "TEST",
+            "ok",
+            model::Span::new(1),
+        )];
         assert!(!has_warnings(&findings));
     }
 

@@ -58,27 +58,48 @@ pub fn emit_text(findings: &[Finding], colored: bool) -> String {
     out
 }
 
+/// Escape a string for JSON output.
+fn json_escape(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for ch in s.chars() {
+        match ch {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if c.is_control() => {
+                for unit in c.encode_utf16(&mut [0; 2]) {
+                    out.push_str(&format!("\\u{:04x}", unit));
+                }
+            }
+            c => out.push(c),
+        }
+    }
+    out
+}
+
 /// Emit findings as JSON (one JSON array).
 pub fn emit_json(findings: &[Finding]) -> String {
     let entries: Vec<String> = findings
         .iter()
         .map(|f| {
             let file = match &f.span.file {
-                Some(file) => format!("\"{}\"", file.replace('\\', "\\\\").replace('"', "\\\"")),
+                Some(file) => format!("\"{}\"", json_escape(file)),
                 None => "null".to_string(),
             };
             let hint = match &f.hint {
-                Some(h) => format!("\"{}\"", h.replace('\\', "\\\\").replace('"', "\\\"")),
+                Some(h) => format!("\"{}\"", json_escape(h)),
                 None => "null".to_string(),
             };
             format!(
                 r#"  {{"severity":"{}","code":"{}","rule":"{}","line":{},"file":{},"message":"{}","hint":{}}}"#,
                 f.severity,
                 f.code,
-                f.rule,
+                json_escape(&f.rule),
                 f.span.line,
                 file,
-                f.message.replace('\\', "\\\\").replace('"', "\\\""),
+                json_escape(&f.message),
                 hint
             )
         })
@@ -94,7 +115,7 @@ pub fn emit_json(findings: &[Finding]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{Finding, Span};
+    use crate::model::{Finding, Severity, Span};
 
     #[test]
     fn text_no_findings() {
@@ -105,8 +126,14 @@ mod tests {
     #[test]
     fn text_single_finding() {
         let findings = vec![
-            Finding::warning("test-rule", "TEST", "something is wrong", Span::new(42))
-                .with_hint("fix it"),
+            Finding::new(
+                Severity::Warning,
+                "test-rule",
+                "TEST",
+                "something is wrong",
+                Span::new(42),
+            )
+            .with_hint("fix it"),
         ];
         let output = emit_text(&findings, false);
         assert!(output.contains("line 42"));
@@ -119,7 +146,8 @@ mod tests {
 
     #[test]
     fn text_finding_with_file() {
-        let findings = vec![Finding::error(
+        let findings = vec![Finding::new(
+            Severity::Error,
             "test-rule",
             "TEST",
             "bad config",
@@ -137,7 +165,13 @@ mod tests {
 
     #[test]
     fn json_single_finding() {
-        let findings = vec![Finding::info("my-rule", "TEST", "hello", Span::new(1))];
+        let findings = vec![Finding::new(
+            Severity::Info,
+            "my-rule",
+            "TEST",
+            "hello",
+            Span::new(1),
+        )];
         let output = emit_json(&findings);
         assert!(output.contains("\"severity\":\"info\""));
         assert!(output.contains("\"code\":\"TEST\""));
@@ -150,7 +184,8 @@ mod tests {
 
     #[test]
     fn json_finding_with_file() {
-        let findings = vec![Finding::error(
+        let findings = vec![Finding::new(
+            Severity::Error,
             "x",
             "TEST",
             "msg",
@@ -170,7 +205,13 @@ mod tests {
 
     #[test]
     fn text_colored_error_is_red() {
-        let findings = vec![Finding::error("r", "ERR", "bad", Span::new(1))];
+        let findings = vec![Finding::new(
+            Severity::Error,
+            "r",
+            "ERR",
+            "bad",
+            Span::new(1),
+        )];
         let output = emit_text(&findings, true);
         assert!(output.contains("\x1b[31m")); // red
         assert!(output.contains("error"));
@@ -178,8 +219,9 @@ mod tests {
 
     #[test]
     fn text_colored_warning_is_yellow() {
-        let findings =
-            vec![Finding::warning("r", "WARN", "hmm", Span::new(1)).with_hint("try this")];
+        let findings = vec![
+            Finding::new(Severity::Warning, "r", "WARN", "hmm", Span::new(1)).with_hint("try this"),
+        ];
         let output = emit_text(&findings, true);
         assert!(output.contains("\x1b[33m")); // yellow
         assert!(output.contains("warning"));

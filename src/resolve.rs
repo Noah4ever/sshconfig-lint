@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use crate::lexer;
-use crate::model::{Config, Finding, Item, Span};
+use crate::model::{Config, Finding, Item, Severity, Span};
 use crate::parser;
 
 /// Resolve all Include directives in-place, returning any findings (missing files, cycles, etc).
@@ -87,7 +87,8 @@ fn expand_include(
             sorted
         }
         Err(_) => {
-            findings.push(Finding::error(
+            findings.push(Finding::new(
+                Severity::Error,
                 "include-glob",
                 "INCLUDE_GLOB",
                 format!("invalid Include glob pattern: {}", pattern),
@@ -99,7 +100,8 @@ fn expand_include(
 
     if paths.is_empty() {
         // OpenSSH silently ignores includes that match nothing, so just info.
-        findings.push(Finding::info(
+        findings.push(Finding::new(
+            Severity::Info,
             "include-no-match",
             "INCLUDE_NO_MATCH",
             format!("Include pattern '{}' matched no files", pattern),
@@ -113,7 +115,8 @@ fn expand_include(
         let canonical = match path.canonicalize() {
             Ok(c) => c,
             Err(_) => {
-                findings.push(Finding::error(
+                findings.push(Finding::new(
+                    Severity::Error,
                     "include-read",
                     "INCLUDE_READ",
                     format!("cannot read included file: {}", path.display()),
@@ -125,7 +128,8 @@ fn expand_include(
 
         if !visited.insert(canonical.clone()) {
             findings.push(
-                Finding::error(
+                Finding::new(
+                    Severity::Error,
                     "include-cycle",
                     "INCLUDE_CYCLE",
                     format!("Include cycle detected: {}", canonical.display()),
@@ -147,7 +151,8 @@ fn expand_include(
                 result.extend(sub_config.items);
             }
             Err(e) => {
-                findings.push(Finding::error(
+                findings.push(Finding::new(
+                    Severity::Error,
                     "include-read",
                     "INCLUDE_READ",
                     format!("cannot read included file {}: {}", canonical.display(), e),
