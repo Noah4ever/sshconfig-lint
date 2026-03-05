@@ -26,6 +26,13 @@ Pin a version:
 curl -fsSL https://raw.githubusercontent.com/Noah4ever/sshconfig-lint/main/install.sh | VERSION=v0.1.0 bash
 ```
 
+### macOS (Homebrew)
+```bash
+brew tap Noah4ever/tap
+brew install sshconfig-lint
+```
+optional `untap Noah4ever/tap` to remove the tap and keep the tap list clean
+
 ### Cargo
 
 ```bash

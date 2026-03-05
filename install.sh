@@ -62,7 +62,6 @@ main() {
   url="https://github.com/${REPO}/releases/download/${version}/${asset}"
 
   echo "downloading ${BINARY} ${version} (${os}/${arch})..."
-  local tmp
   tmp="$(mktemp -d)"
   trap 'rm -rf "$tmp"' EXIT
 
