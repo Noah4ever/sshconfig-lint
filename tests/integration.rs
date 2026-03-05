@@ -130,3 +130,45 @@ fn fixture_quoted_values() {
         findings
     );
 }
+
+#[test]
+fn fixture_weak_algorithms() {
+    let path = Path::new("tests/fixtures/weak_algorithms.config");
+    let findings = lint_file(path).expect("should read fixture");
+    assert!(
+        findings
+            .iter()
+            .any(|f| f.rule == "deprecated-weak-algorithms"),
+        "should warn about weak algorithms, got: {:?}",
+        findings
+    );
+    let weak: Vec<_> = findings.iter().filter(|f| f.code == "WEAK_ALGO").collect();
+    assert_eq!(
+        weak.len(),
+        3,
+        "should find 3des-cbc, hmac-md5, and diffie-hellman-group1-sha1, got: {:?}",
+        weak
+    );
+}
+
+#[test]
+fn fixture_duplicate_directives() {
+    let path = Path::new("tests/fixtures/duplicate_directives.config");
+    let findings = lint_file(path).expect("should read fixture");
+    assert!(
+        findings.iter().any(|f| f.rule == "duplicate-directives"),
+        "should detect duplicate directives, got: {:?}",
+        findings
+    );
+    let dup: Vec<_> = findings
+        .iter()
+        .filter(|f| f.code == "DUP_DIRECTIVE")
+        .collect();
+    assert_eq!(
+        dup.len(),
+        1,
+        "should find one duplicate User, got: {:?}",
+        dup
+    );
+    assert!(dup[0].message.contains("User"));
+}

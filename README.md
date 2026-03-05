@@ -2,7 +2,7 @@
 
 Lint your `~/.ssh/config` for common mistakes.
 
-Checks for duplicate host blocks, missing identity files, wildcard ordering problems, and more. Supports `Include` directives with cycle detection.
+Checks for duplicate host blocks, missing identity files, wildcard ordering problems, weak algorithms, duplicate directives, and more. Supports `Include` directives with cycle detection.
 
 https://github.com/user-attachments/assets/4d995679-baed-4f20-9ba8-8f3ec94c64fd
 
@@ -91,6 +91,8 @@ Each finding has a stable code you can grep for or match on in scripts.
 | `DUP_HOST` | `duplicate-host` | warning | Two Host blocks with the same pattern |
 | `MISSING_IDENTITY` | `identity-file-exists` | error | IdentityFile path doesn't exist |
 | `WILDCARD_ORDER` | `wildcard-host-order` | warning | Host * appears before specific patterns |
+| `WEAK_ALGO` | `deprecated-weak-algorithms` | warning | Weak or deprecated algorithm (3des-cbc, arcfour, hmac-md5, ssh-dss, etc.) |
+| `DUP_DIRECTIVE` | `duplicate-directives` | warning | Same directive repeated in one scope (only first value takes effect) |
 | `INCLUDE_CYCLE` | `include-cycle` | error | Circular Include chain |
 | `INCLUDE_READ` | `include-read` | error | Included file can't be read |
 | `INCLUDE_GLOB` | `include-glob` | error | Invalid Include glob pattern |

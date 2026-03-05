@@ -243,6 +243,74 @@ fn check_algorithms(key: &str, value: &str, span: &Span, findings: &mut Vec<Find
     }
 }
 
+pub struct DuplicateDirectives;
+
+impl Rule for DuplicateDirectives {
+    fn name(&self) -> &'static str {
+        "duplicate-directives"
+    }
+
+    fn check(&self, config: &Config) -> Vec<Finding> {
+        let mut findings = Vec::new();
+        collect_duplicate_directives(&config.items, &mut findings);
+        findings
+    }
+}
+
+/// Directives that are allowed (or expected) to appear multiple times.
+const MULTI_VALUE_DIRECTIVES: &[&str] = &[
+    "identityfile",
+    "certificatefile",
+    "localforward",
+    "remoteforward",
+    "dynamicforward",
+    "sendenv",
+    "setenv",
+    "match",
+    "host",
+];
+
+fn collect_duplicate_directives(items: &[Item], findings: &mut Vec<Finding>) {
+    check_scope_for_duplicates(items, findings);
+    for item in items {
+        match item {
+            Item::HostBlock { items, .. } | Item::MatchBlock { items, .. } => {
+                check_scope_for_duplicates(items, findings);
+            }
+            _ => {}
+        }
+    }
+}
+
+fn check_scope_for_duplicates(items: &[Item], findings: &mut Vec<Finding>) {
+    let mut seen: HashMap<String, Span> = HashMap::new();
+    for item in items {
+        if let Item::Directive { key, span, .. } = item {
+            let lower = key.to_ascii_lowercase();
+            if MULTI_VALUE_DIRECTIVES.contains(&lower.as_str()) {
+                continue;
+            }
+            if let Some(first_span) = seen.get(&lower) {
+                findings.push(
+                    Finding::new(
+                        Severity::Warning,
+                        "duplicate-directives",
+                        "DUP_DIRECTIVE",
+                        format!(
+                            "duplicate directive '{}' (first seen at line {})",
+                            key, first_span.line
+                        ),
+                        span.clone(),
+                    )
+                    .with_hint("remove the duplicate; only the first value takes effect"),
+                );
+            } else {
+                seen.insert(lower, span.clone());
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -560,5 +628,235 @@ mod tests {
         let hint = findings[0].hint.as_deref().unwrap();
         assert!(hint.contains("hmac-md5"));
         assert!(hint.contains("stronger algorithm"));
+    }
+
+    // ── DuplicateDirectives tests ──
+
+    #[test]
+    fn duplicate_directives_at_root() {
+        let config = Config {
+            items: vec![
+                Item::Directive {
+                    key: "User".into(),
+                    value: "noah".into(),
+                    span: Span::new(1),
+                },
+                Item::Directive {
+                    key: "User".into(),
+                    value: "noah2".into(),
+                    span: Span::new(2),
+                },
+            ],
+        };
+        let findings = DuplicateDirectives.check(&config);
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].rule, "duplicate-directives");
+        assert_eq!(findings[0].code, "DUP_DIRECTIVE");
+        assert!(findings[0].message.contains("User"));
+        assert!(findings[0].message.contains("first seen at line 1"));
+    }
+
+    #[test]
+    fn duplicate_directives_inside_host_block() {
+        let config = Config {
+            items: vec![Item::HostBlock {
+                patterns: vec!["example.com".to_string()],
+                span: Span::new(1),
+                items: vec![
+                    Item::Directive {
+                        key: "HostName".into(),
+                        value: "1.2.3.4".into(),
+                        span: Span::new(2),
+                    },
+                    Item::Directive {
+                        key: "HostName".into(),
+                        value: "5.6.7.8".into(),
+                        span: Span::new(3),
+                    },
+                ],
+            }],
+        };
+        let findings = DuplicateDirectives.check(&config);
+        assert_eq!(findings.len(), 1);
+        assert!(findings[0].message.contains("HostName"));
+    }
+
+    #[test]
+    fn duplicate_directives_case_insensitive() {
+        let config = Config {
+            items: vec![
+                Item::Directive {
+                    key: "User".into(),
+                    value: "alice".into(),
+                    span: Span::new(1),
+                },
+                Item::Directive {
+                    key: "user".into(),
+                    value: "bob".into(),
+                    span: Span::new(2),
+                },
+            ],
+        };
+        let findings = DuplicateDirectives.check(&config);
+        assert_eq!(findings.len(), 1);
+    }
+
+    #[test]
+    fn duplicate_directives_allows_identity_file() {
+        let config = Config {
+            items: vec![Item::HostBlock {
+                patterns: vec!["server".to_string()],
+                span: Span::new(1),
+                items: vec![
+                    Item::Directive {
+                        key: "IdentityFile".into(),
+                        value: "~/.ssh/id_ed25519".into(),
+                        span: Span::new(2),
+                    },
+                    Item::Directive {
+                        key: "IdentityFile".into(),
+                        value: "~/.ssh/id_rsa".into(),
+                        span: Span::new(3),
+                    },
+                ],
+            }],
+        };
+        let findings = DuplicateDirectives.check(&config);
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn duplicate_directives_allows_multi_value_directives() {
+        let config = Config {
+            items: vec![
+                Item::Directive {
+                    key: "SendEnv".into(),
+                    value: "LANG".into(),
+                    span: Span::new(1),
+                },
+                Item::Directive {
+                    key: "SendEnv".into(),
+                    value: "LC_*".into(),
+                    span: Span::new(2),
+                },
+                Item::Directive {
+                    key: "LocalForward".into(),
+                    value: "8080 localhost:80".into(),
+                    span: Span::new(3),
+                },
+                Item::Directive {
+                    key: "LocalForward".into(),
+                    value: "9090 localhost:90".into(),
+                    span: Span::new(4),
+                },
+            ],
+        };
+        let findings = DuplicateDirectives.check(&config);
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn no_duplicate_directives_no_findings() {
+        let config = Config {
+            items: vec![Item::HostBlock {
+                patterns: vec!["server".to_string()],
+                span: Span::new(1),
+                items: vec![
+                    Item::Directive {
+                        key: "User".into(),
+                        value: "git".into(),
+                        span: Span::new(2),
+                    },
+                    Item::Directive {
+                        key: "HostName".into(),
+                        value: "1.2.3.4".into(),
+                        span: Span::new(3),
+                    },
+                    Item::Directive {
+                        key: "Port".into(),
+                        value: "22".into(),
+                        span: Span::new(4),
+                    },
+                ],
+            }],
+        };
+        let findings = DuplicateDirectives.check(&config);
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn duplicate_directives_separate_scopes_ok() {
+        // Same directive in different Host blocks should NOT warn
+        let config = Config {
+            items: vec![
+                Item::HostBlock {
+                    patterns: vec!["a".to_string()],
+                    span: Span::new(1),
+                    items: vec![Item::Directive {
+                        key: "User".into(),
+                        value: "alice".into(),
+                        span: Span::new(2),
+                    }],
+                },
+                Item::HostBlock {
+                    patterns: vec!["b".to_string()],
+                    span: Span::new(4),
+                    items: vec![Item::Directive {
+                        key: "User".into(),
+                        value: "bob".into(),
+                        span: Span::new(5),
+                    }],
+                },
+            ],
+        };
+        let findings = DuplicateDirectives.check(&config);
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn duplicate_directives_has_hint() {
+        let config = Config {
+            items: vec![
+                Item::Directive {
+                    key: "Port".into(),
+                    value: "22".into(),
+                    span: Span::new(1),
+                },
+                Item::Directive {
+                    key: "Port".into(),
+                    value: "2222".into(),
+                    span: Span::new(2),
+                },
+            ],
+        };
+        let findings = DuplicateDirectives.check(&config);
+        assert_eq!(findings.len(), 1);
+        let hint = findings[0].hint.as_deref().unwrap();
+        assert!(hint.contains("first value takes effect"));
+    }
+
+    #[test]
+    fn duplicate_directives_inside_match_block() {
+        let config = Config {
+            items: vec![Item::MatchBlock {
+                criteria: "host example.com".into(),
+                span: Span::new(1),
+                items: vec![
+                    Item::Directive {
+                        key: "ForwardAgent".into(),
+                        value: "yes".into(),
+                        span: Span::new(2),
+                    },
+                    Item::Directive {
+                        key: "ForwardAgent".into(),
+                        value: "no".into(),
+                        span: Span::new(3),
+                    },
+                ],
+            }],
+        };
+        let findings = DuplicateDirectives.check(&config);
+        assert_eq!(findings.len(), 1);
+        assert!(findings[0].message.contains("ForwardAgent"));
     }
 }
