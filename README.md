@@ -32,6 +32,15 @@ curl -fsSL https://raw.githubusercontent.com/Noah4ever/sshconfig-lint/main/insta
 cargo install sshconfig-lint
 ```
 
+### AUR
+[sshconfig-lint-bin](https://aur.archlinux.org/packages/sshconfig-lint-bin/) - pre-built binaries
+
+```bash
+yay -S sshconfig-lint-bin
+```
+```bash
+paru -S sshconfig-lint-bin
+```
 
 ### Pre-built binaries
 
