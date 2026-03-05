@@ -14,17 +14,7 @@ https://github.com/user-attachments/assets/4d995679-baed-4f20-9ba8-8f3ec94c64fd
 curl -fsSL https://raw.githubusercontent.com/Noah4ever/sshconfig-lint/main/install.sh | bash
 ```
 
-Installs to `/usr/local/bin` by default. Override with `INSTALL_DIR`:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/Noah4ever/sshconfig-lint/main/install.sh | INSTALL_DIR=~/.local/bin bash
-```
-
-Pin a version:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/Noah4ever/sshconfig-lint/main/install.sh | VERSION=v0.1.0 bash
-```
+Set `VERSION=v0.1.0` or `INSTALL_DIR=~/.local/bin` to override defaults.
 
 ### macOS (Homebrew)
 ```bash
