@@ -16,6 +16,7 @@ pub fn run_all(config: &Config) -> Vec<Finding> {
         Box::new(basic::DuplicateHost),
         Box::new(basic::IdentityFileExists),
         Box::new(basic::WildcardHostOrder),
+        Box::new(basic::DeprecatedWeakAlgorithms),
     ];
 
     let mut findings = Vec::new();
