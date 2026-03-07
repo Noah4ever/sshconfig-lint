@@ -311,6 +311,134 @@ fn check_scope_for_duplicates(items: &[Item], findings: &mut Vec<Finding>) {
     }
 }
 
+/// Warns about directives that weaken SSH security.
+///
+/// Catches dangerous settings like StrictHostKeyChecking no (disables MITM
+/// protection) and ForwardAgent yes on wildcard hosts (exposes your agent to
+/// every server you connect to).
+pub struct InsecureOption;
+
+/// (directive_lowercase, bad_value, severity, code, hint)
+const INSECURE_SETTINGS: &[(&str, &str, Severity, &str, &str)] = &[
+    (
+        "stricthostkeychecking",
+        "no",
+        Severity::Warning,
+        "disables host key verification, making connections vulnerable to MITM attacks",
+        "remove this or set to 'accept-new' if you want to auto-accept new keys",
+    ),
+    (
+        "stricthostkeychecking",
+        "off",
+        Severity::Warning,
+        "disables host key verification, making connections vulnerable to MITM attacks",
+        "remove this or set to 'accept-new' if you want to auto-accept new keys",
+    ),
+    (
+        "userknownhostsfile",
+        "/dev/null",
+        Severity::Warning,
+        "discards known host keys, disabling host verification entirely",
+        "remove this to use the default ~/.ssh/known_hosts",
+    ),
+    (
+        "loglevel",
+        "quiet",
+        Severity::Info,
+        "suppresses all SSH log output, making issues hard to debug",
+        "use INFO or VERBOSE for better visibility",
+    ),
+];
+
+/// Directives that are risky when set on a wildcard Host *.
+const RISKY_ON_WILDCARD: &[(&str, &str, &str)] = &[
+    (
+        "forwardagent",
+        "yes",
+        "exposes your SSH agent to every server; an attacker with root on any server can use your keys",
+    ),
+    (
+        "forwardx11",
+        "yes",
+        "forwards your X11 display to every server, allowing remote keystroke capture",
+    ),
+    (
+        "forwardx11trusted",
+        "yes",
+        "gives every server full access to your X11 display",
+    ),
+];
+
+impl Rule for InsecureOption {
+    fn name(&self) -> &'static str {
+        "insecure-option"
+    }
+
+    fn check(&self, config: &Config) -> Vec<Finding> {
+        let mut findings = Vec::new();
+        // Check root-level directives (implicitly global)
+        check_insecure_directives(&config.items, true, &mut findings);
+        for item in &config.items {
+            match item {
+                Item::HostBlock {
+                    patterns, items, ..
+                } => {
+                    let is_wildcard = patterns.iter().any(|p| p == "*");
+                    check_insecure_directives(items, is_wildcard, &mut findings);
+                }
+                Item::MatchBlock { items, .. } => {
+                    check_insecure_directives(items, false, &mut findings);
+                }
+                _ => {}
+            }
+        }
+        findings
+    }
+}
+
+fn check_insecure_directives(items: &[Item], is_global: bool, findings: &mut Vec<Finding>) {
+    for item in items {
+        if let Item::Directive { key, value, span } = item {
+            let key_lower = key.to_ascii_lowercase();
+            let val_lower = value.to_ascii_lowercase();
+
+            // Always-bad settings
+            for &(directive, bad_val, severity, desc, hint) in INSECURE_SETTINGS {
+                if key_lower == directive && val_lower == bad_val {
+                    findings.push(
+                        Finding::new(
+                            severity,
+                            "insecure-option",
+                            "INSECURE_OPT",
+                            format!("{} {} — {}", key, value, desc),
+                            span.clone(),
+                        )
+                        .with_hint(hint),
+                    );
+                }
+            }
+
+            // Risky-on-wildcard settings
+            if is_global {
+                for &(directive, bad_val, desc) in RISKY_ON_WILDCARD {
+                    if key_lower == directive && val_lower == bad_val {
+                        findings.push(
+                            Finding::new(
+                                Severity::Warning,
+                                "insecure-option",
+                                "INSECURE_OPT",
+                                format!("{} {} on a global/wildcard host — {}", key, value, desc),
+                                span.clone(),
+                            )
+                            .with_hint("set this only on specific hosts you trust, not globally"),
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -858,5 +986,267 @@ mod tests {
         let findings = DuplicateDirectives.check(&config);
         assert_eq!(findings.len(), 1);
         assert!(findings[0].message.contains("ForwardAgent"));
+    }
+
+    // ── InsecureOption tests ──
+
+    #[test]
+    fn strict_host_key_checking_no_warns() {
+        let config = Config {
+            items: vec![Item::Directive {
+                key: "StrictHostKeyChecking".into(),
+                value: "no".into(),
+                span: Span::new(1),
+            }],
+        };
+        let findings = InsecureOption.check(&config);
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].code, "INSECURE_OPT");
+        assert_eq!(findings[0].severity, Severity::Warning);
+        assert!(findings[0].message.contains("MITM"));
+    }
+
+    #[test]
+    fn strict_host_key_checking_off_warns() {
+        let config = Config {
+            items: vec![Item::Directive {
+                key: "StrictHostKeyChecking".into(),
+                value: "off".into(),
+                span: Span::new(1),
+            }],
+        };
+        let findings = InsecureOption.check(&config);
+        assert_eq!(findings.len(), 1);
+        assert!(findings[0].message.contains("MITM"));
+    }
+
+    #[test]
+    fn strict_host_key_checking_ask_ok() {
+        let config = Config {
+            items: vec![Item::Directive {
+                key: "StrictHostKeyChecking".into(),
+                value: "ask".into(),
+                span: Span::new(1),
+            }],
+        };
+        let findings = InsecureOption.check(&config);
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn strict_host_key_checking_accept_new_ok() {
+        let config = Config {
+            items: vec![Item::Directive {
+                key: "StrictHostKeyChecking".into(),
+                value: "accept-new".into(),
+                span: Span::new(1),
+            }],
+        };
+        let findings = InsecureOption.check(&config);
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn user_known_hosts_dev_null_warns() {
+        let config = Config {
+            items: vec![Item::Directive {
+                key: "UserKnownHostsFile".into(),
+                value: "/dev/null".into(),
+                span: Span::new(1),
+            }],
+        };
+        let findings = InsecureOption.check(&config);
+        assert_eq!(findings.len(), 1);
+        assert!(findings[0].message.contains("known host keys"));
+    }
+
+    #[test]
+    fn loglevel_quiet_info() {
+        let config = Config {
+            items: vec![Item::Directive {
+                key: "LogLevel".into(),
+                value: "QUIET".into(),
+                span: Span::new(1),
+            }],
+        };
+        let findings = InsecureOption.check(&config);
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].severity, Severity::Info);
+    }
+
+    #[test]
+    fn forward_agent_yes_on_wildcard_warns() {
+        let config = Config {
+            items: vec![Item::HostBlock {
+                patterns: vec!["*".to_string()],
+                span: Span::new(1),
+                items: vec![Item::Directive {
+                    key: "ForwardAgent".into(),
+                    value: "yes".into(),
+                    span: Span::new(2),
+                }],
+            }],
+        };
+        let findings = InsecureOption.check(&config);
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].severity, Severity::Warning);
+        assert!(findings[0].message.contains("global"));
+    }
+
+    #[test]
+    fn forward_agent_yes_on_specific_host_ok() {
+        let config = Config {
+            items: vec![Item::HostBlock {
+                patterns: vec!["bastion.example.com".to_string()],
+                span: Span::new(1),
+                items: vec![Item::Directive {
+                    key: "ForwardAgent".into(),
+                    value: "yes".into(),
+                    span: Span::new(2),
+                }],
+            }],
+        };
+        let findings = InsecureOption.check(&config);
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn forward_x11_yes_on_wildcard_warns() {
+        let config = Config {
+            items: vec![Item::HostBlock {
+                patterns: vec!["*".to_string()],
+                span: Span::new(1),
+                items: vec![Item::Directive {
+                    key: "ForwardX11".into(),
+                    value: "yes".into(),
+                    span: Span::new(2),
+                }],
+            }],
+        };
+        let findings = InsecureOption.check(&config);
+        assert_eq!(findings.len(), 1);
+        assert!(findings[0].message.contains("X11"));
+    }
+
+    #[test]
+    fn forward_agent_at_root_level_warns() {
+        // Root-level directives are implicitly global
+        let config = Config {
+            items: vec![Item::Directive {
+                key: "ForwardAgent".into(),
+                value: "yes".into(),
+                span: Span::new(1),
+            }],
+        };
+        let findings = InsecureOption.check(&config);
+        assert_eq!(findings.len(), 1);
+        assert!(findings[0].message.contains("global"));
+    }
+
+    #[test]
+    fn strict_host_key_inside_host_block_warns() {
+        // Always-bad settings should warn even inside a specific host block
+        let config = Config {
+            items: vec![Item::HostBlock {
+                patterns: vec!["dev-server".to_string()],
+                span: Span::new(1),
+                items: vec![Item::Directive {
+                    key: "StrictHostKeyChecking".into(),
+                    value: "no".into(),
+                    span: Span::new(2),
+                }],
+            }],
+        };
+        let findings = InsecureOption.check(&config);
+        assert_eq!(findings.len(), 1);
+        assert!(findings[0].message.contains("MITM"));
+    }
+
+    #[test]
+    fn insecure_option_has_hint() {
+        let config = Config {
+            items: vec![Item::Directive {
+                key: "StrictHostKeyChecking".into(),
+                value: "no".into(),
+                span: Span::new(1),
+            }],
+        };
+        let findings = InsecureOption.check(&config);
+        assert_eq!(findings.len(), 1);
+        assert!(findings[0].hint.is_some());
+        assert!(findings[0].hint.as_deref().unwrap().contains("accept-new"));
+    }
+
+    #[test]
+    fn case_insensitive_directive_and_value() {
+        let config = Config {
+            items: vec![Item::Directive {
+                key: "stricthostkeychecking".into(),
+                value: "NO".into(),
+                span: Span::new(1),
+            }],
+        };
+        let findings = InsecureOption.check(&config);
+        assert_eq!(findings.len(), 1);
+    }
+
+    #[test]
+    fn multiple_insecure_settings() {
+        let config = Config {
+            items: vec![
+                Item::Directive {
+                    key: "StrictHostKeyChecking".into(),
+                    value: "no".into(),
+                    span: Span::new(1),
+                },
+                Item::Directive {
+                    key: "UserKnownHostsFile".into(),
+                    value: "/dev/null".into(),
+                    span: Span::new(2),
+                },
+                Item::Directive {
+                    key: "LogLevel".into(),
+                    value: "QUIET".into(),
+                    span: Span::new(3),
+                },
+                Item::Directive {
+                    key: "ForwardAgent".into(),
+                    value: "yes".into(),
+                    span: Span::new(4),
+                },
+            ],
+        };
+        let findings = InsecureOption.check(&config);
+        // StrictHostKeyChecking + UserKnownHostsFile + LogLevel + ForwardAgent (root=global)
+        assert_eq!(findings.len(), 4);
+    }
+
+    #[test]
+    fn safe_config_no_findings() {
+        let config = Config {
+            items: vec![
+                Item::Directive {
+                    key: "StrictHostKeyChecking".into(),
+                    value: "yes".into(),
+                    span: Span::new(1),
+                },
+                Item::Directive {
+                    key: "LogLevel".into(),
+                    value: "VERBOSE".into(),
+                    span: Span::new(2),
+                },
+                Item::HostBlock {
+                    patterns: vec!["myhost".to_string()],
+                    span: Span::new(3),
+                    items: vec![Item::Directive {
+                        key: "ForwardAgent".into(),
+                        value: "yes".into(),
+                        span: Span::new(4),
+                    }],
+                },
+            ],
+        };
+        let findings = InsecureOption.check(&config);
+        assert!(findings.is_empty());
     }
 }
