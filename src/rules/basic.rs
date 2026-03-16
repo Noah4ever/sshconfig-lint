@@ -439,6 +439,82 @@ fn check_insecure_directives(items: &[Item], is_global: bool, findings: &mut Vec
     }
 }
 
+/// Warns when `ControlPath` doesn't include the tokens needed to uniquely
+/// identify connections. The OpenSSH man page recommends that ControlPath
+/// include at least `%h`, `%p`, and `%r` (or alternatively `%C`).
+pub struct UnsafeControlPath;
+
+impl Rule for UnsafeControlPath {
+    fn name(&self) -> &'static str {
+        "unsafe-control-path"
+    }
+
+    fn check(&self, config: &Config) -> Vec<Finding> {
+        let mut findings = Vec::new();
+        collect_control_path_findings(&config.items, &mut findings);
+        findings
+    }
+}
+
+fn collect_control_path_findings(items: &[Item], findings: &mut Vec<Finding>) {
+    for item in items {
+        match item {
+            Item::Directive { key, value, span } if key.eq_ignore_ascii_case("ControlPath") => {
+                check_control_path(value, span, findings);
+            }
+            Item::HostBlock { items, .. } | Item::MatchBlock { items, .. } => {
+                collect_control_path_findings(items, findings);
+            }
+            _ => {}
+        }
+    }
+}
+
+fn check_control_path(value: &str, span: &Span, findings: &mut Vec<Finding>) {
+    // "none" disables connection sharing — nothing to check
+    if value.eq_ignore_ascii_case("none") {
+        return;
+    }
+
+    // %C is a hash of %l%h%p%r — a single token that covers all four
+    if value.contains("%C") {
+        return;
+    }
+
+    let has_h = value.contains("%h");
+    let has_p = value.contains("%p");
+    let has_r = value.contains("%r");
+
+    if has_h && has_p && has_r {
+        return;
+    }
+
+    let mut missing = Vec::new();
+    if !has_h {
+        missing.push("%h");
+    }
+    if !has_p {
+        missing.push("%p");
+    }
+    if !has_r {
+        missing.push("%r");
+    }
+
+    findings.push(
+        Finding::new(
+            Severity::Warning,
+            "unsafe-control-path",
+            "UNSAFE_CTRL_PATH",
+            format!(
+                "ControlPath is missing {} — connections to different hosts may share a socket",
+                missing.join(", ")
+            ),
+            span.clone(),
+        )
+        .with_hint("include %h, %p, and %r (or %C) in the path"),
+    );
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1248,5 +1324,155 @@ mod tests {
         };
         let findings = InsecureOption.check(&config);
         assert!(findings.is_empty());
+    }
+
+    // ---- UnsafeControlPath tests ----
+
+    #[test]
+    fn control_path_with_all_tokens_ok() {
+        let config = Config {
+            items: vec![Item::Directive {
+                key: "ControlPath".into(),
+                value: "~/.ssh/sockets/%r@%h-%p".into(),
+                span: Span::new(1),
+            }],
+        };
+        let findings = UnsafeControlPath.check(&config);
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn control_path_with_hash_c_ok() {
+        let config = Config {
+            items: vec![Item::Directive {
+                key: "ControlPath".into(),
+                value: "~/.ssh/sockets/%C".into(),
+                span: Span::new(1),
+            }],
+        };
+        let findings = UnsafeControlPath.check(&config);
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn control_path_none_ok() {
+        let config = Config {
+            items: vec![Item::Directive {
+                key: "ControlPath".into(),
+                value: "none".into(),
+                span: Span::new(1),
+            }],
+        };
+        let findings = UnsafeControlPath.check(&config);
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn control_path_none_case_insensitive() {
+        let config = Config {
+            items: vec![Item::Directive {
+                key: "ControlPath".into(),
+                value: "NONE".into(),
+                span: Span::new(1),
+            }],
+        };
+        let findings = UnsafeControlPath.check(&config);
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn control_path_missing_all_tokens_warns() {
+        let config = Config {
+            items: vec![Item::Directive {
+                key: "ControlPath".into(),
+                value: "~/.ssh/sockets/master".into(),
+                span: Span::new(1),
+            }],
+        };
+        let findings = UnsafeControlPath.check(&config);
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].code, "UNSAFE_CTRL_PATH");
+        assert!(findings[0].message.contains("%h"));
+        assert!(findings[0].message.contains("%p"));
+        assert!(findings[0].message.contains("%r"));
+    }
+
+    #[test]
+    fn control_path_missing_port_warns() {
+        let config = Config {
+            items: vec![Item::Directive {
+                key: "ControlPath".into(),
+                value: "/tmp/ssh-%r@%h".into(),
+                span: Span::new(1),
+            }],
+        };
+        let findings = UnsafeControlPath.check(&config);
+        assert_eq!(findings.len(), 1);
+        assert!(findings[0].message.contains("%p"));
+        assert!(!findings[0].message.contains("%h"));
+        assert!(!findings[0].message.contains("%r"));
+    }
+
+    #[test]
+    fn control_path_missing_user_warns() {
+        let config = Config {
+            items: vec![Item::Directive {
+                key: "ControlPath".into(),
+                value: "~/.ssh/sockets/%h-%p".into(),
+                span: Span::new(1),
+            }],
+        };
+        let findings = UnsafeControlPath.check(&config);
+        assert_eq!(findings.len(), 1);
+        assert!(findings[0].message.contains("%r"));
+    }
+
+    #[test]
+    fn control_path_inside_host_block_warns() {
+        let config = Config {
+            items: vec![Item::HostBlock {
+                patterns: vec!["myhost".to_string()],
+                span: Span::new(1),
+                items: vec![Item::Directive {
+                    key: "ControlPath".into(),
+                    value: "/tmp/ssh-socket".into(),
+                    span: Span::new(2),
+                }],
+            }],
+        };
+        let findings = UnsafeControlPath.check(&config);
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].code, "UNSAFE_CTRL_PATH");
+    }
+
+    #[test]
+    fn control_path_inside_match_block_warns() {
+        let config = Config {
+            items: vec![Item::MatchBlock {
+                criteria: "host example.com".into(),
+                span: Span::new(1),
+                items: vec![Item::Directive {
+                    key: "ControlPath".into(),
+                    value: "~/.ssh/%h".into(),
+                    span: Span::new(2),
+                }],
+            }],
+        };
+        let findings = UnsafeControlPath.check(&config);
+        assert_eq!(findings.len(), 1);
+    }
+
+    #[test]
+    fn control_path_has_hint() {
+        let config = Config {
+            items: vec![Item::Directive {
+                key: "ControlPath".into(),
+                value: "~/.ssh/sockets/ctrl".into(),
+                span: Span::new(1),
+            }],
+        };
+        let findings = UnsafeControlPath.check(&config);
+        assert_eq!(findings.len(), 1);
+        assert!(findings[0].hint.as_ref().unwrap().contains("%C"));
     }
 }

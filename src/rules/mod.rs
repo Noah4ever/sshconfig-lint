@@ -19,6 +19,7 @@ pub fn run_all(config: &Config) -> Vec<Finding> {
         Box::new(basic::DeprecatedWeakAlgorithms),
         Box::new(basic::DuplicateDirectives),
         Box::new(basic::InsecureOption),
+        Box::new(basic::UnsafeControlPath),
     ];
 
     let mut findings = Vec::new();

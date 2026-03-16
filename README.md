@@ -94,6 +94,7 @@ Each finding has a stable code you can grep for or match on in scripts.
 | `WEAK_ALGO` | `deprecated-weak-algorithms` | warning | Weak or deprecated algorithm (3des-cbc, arcfour, hmac-md5, ssh-dss, etc.) |
 | `DUP_DIRECTIVE` | `duplicate-directives` | warning | Same directive repeated in one scope (only first value takes effect) |
 | `INSECURE_OPT` | `insecure-option` | warning | Dangerous setting like `StrictHostKeyChecking no` or `ForwardAgent yes` on `Host *` |
+| `UNSAFE_CTRL_PATH` | `unsafe-control-path` | warning | ControlPath missing `%h`, `%p`, `%r` (or `%C`) — connections may share a socket |
 | `INCLUDE_CYCLE` | `include-cycle` | error | Circular Include chain |
 | `INCLUDE_READ` | `include-read` | error | Included file can't be read |
 | `INCLUDE_GLOB` | `include-glob` | error | Invalid Include glob pattern |
