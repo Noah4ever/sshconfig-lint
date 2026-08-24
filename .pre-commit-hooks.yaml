@@ -1,0 +1,13 @@
+- id: sshconfig-lint
+  name: sshconfig-lint
+  description: Lint OpenSSH client configs
+  entry: sshconfig-lint
+  language: rust
+  files: '(^|/)(\.ssh/config|ssh_config|dot_ssh/config)$'
+
+- id: sshconfig-lint-strict
+  name: sshconfig-lint strict
+  description: Lint OpenSSH client configs and fail on warnings
+  entry: sshconfig-lint --strict
+  language: rust
+  files: '(^|/)(\.ssh/config|ssh_config|dot_ssh/config)$'

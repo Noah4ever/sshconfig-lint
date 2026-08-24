@@ -1,27 +1,38 @@
 # sshconfig-lint
 
-Lint your `~/.ssh/config` for common mistakes.
+[![Tests](https://github.com/Noah4ever/sshconfig-lint/actions/workflows/tests.yml/badge.svg)](https://github.com/Noah4ever/sshconfig-lint/actions/workflows/tests.yml)
+[![crates.io](https://img.shields.io/crates/v/sshconfig-lint.svg)](https://crates.io/crates/sshconfig-lint)
+[![License: MIT](https://img.shields.io/badge/license-MIT-black.svg)](LICENSE)
 
-Checks for duplicate host blocks, missing identity files, wildcard ordering problems, weak algorithms, duplicate directives, and more. Supports `Include` directives with cycle detection.
+**One engine for every place your SSH config changes.**
 
-https://github.com/user-attachments/assets/4d995679-baed-4f20-9ba8-8f3ec94c64fd
+sshconfig-lint finds semantic mistakes in OpenSSH client configs: duplicate hosts, broken identity paths, unsafe options, weak algorithms, wildcard ordering, and tangled `Include` chains. Use the same rule codes locally, in Git hooks, GitHub Actions, and editors.
+
+[Try the private browser playground](https://sshconfig-lint.apps.thiering.org/en) · [Learn with interactive examples](https://sshconfig-lint.apps.thiering.org/en/learn) · [Read every rule](https://sshconfig-lint.apps.thiering.org/en/rules)
+
+The browser checker runs on your device. Config contents are not uploaded and no telemetry is collected.
+
+## Quick start
+
+```bash
+# check ~/.ssh/config
+sshconfig-lint
+
+# check one or more repository configs
+sshconfig-lint .ssh/config infrastructure/ssh_config
+
+# fail on warnings and errors
+sshconfig-lint .ssh/config --strict
+```
 
 ## Install
 
-### Quick install (Linux / macOS)
+### Homebrew
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/Noah4ever/sshconfig-lint/main/install.sh | bash
-```
-
-Set `VERSION=v0.1.0` or `INSTALL_DIR=~/.local/bin` to override defaults.
-
-### macOS (Homebrew)
 ```bash
 brew tap Noah4ever/tap
 brew install sshconfig-lint
 ```
-optional `untap Noah4ever/tap` to remove the tap and keep the tap list clean
 
 ### Cargo
 
@@ -29,123 +40,120 @@ optional `untap Noah4ever/tap` to remove the tap and keep the tap list clean
 cargo install sshconfig-lint
 ```
 
-### AUR
-[sshconfig-lint-bin](https://aur.archlinux.org/packages/sshconfig-lint-bin/) - pre-built binaries
+### Arch Linux
 
 ```bash
 yay -S sshconfig-lint-bin
 ```
+
+The [release page](https://github.com/Noah4ever/sshconfig-lint/releases) provides verified binaries for Linux, macOS, and Windows. The convenience installer verifies the release checksum before installing:
+
 ```bash
-paru -S sshconfig-lint-bin
+curl -fsSL https://raw.githubusercontent.com/Noah4ever/sshconfig-lint/main/install.sh | bash
 ```
 
-### Pre-built binaries
+Set `VERSION=v0.5.0` or `INSTALL_DIR=~/.local/bin` to override its defaults.
 
-Grab a binary from the [releases page](https://github.com/Noah4ever/sshconfig-lint/releases).
+## GitHub Actions
 
-## Usage
+```yaml
+name: SSH config
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Noah4ever/sshconfig-lint@v0.5.0
+        with:
+          paths: |
+            .ssh/config
+            infrastructure/ssh_config
+          strict: true
+```
+
+Findings appear as annotations on the exact file and line. The Action downloads the release matching its tag and verifies `SHA256SUMS` before execution.
+
+For repositories with GitHub Code Scanning enabled, SARIF can be uploaded separately:
+
+```yaml
+- run: sshconfig-lint .ssh/config --format sarif > sshconfig-lint.sarif
+- uses: github/codeql-action/upload-sarif@v3
+  with:
+    sarif_file: sshconfig-lint.sarif
+```
+
+## Pre-Commit
+
+```yaml
+repos:
+  - repo: https://github.com/Noah4ever/sshconfig-lint
+    rev: v0.5.0
+    hooks:
+      - id: sshconfig-lint-strict
+```
+
+Use `id: sshconfig-lint` when warnings should not block a commit. Override `files:` in your project when configs use another naming convention.
+
+## Editors
+
+The VS Code extension in [`editors/vscode`](editors/vscode) starts `sshconfig-lint lsp`, downloads a matching verified binary once, and then works offline. It recognizes `.ssh/config`, `ssh_config`, and chezmoi's `dot_ssh/config`. No telemetry is collected.
+
+Any editor with LSP support can start:
 
 ```bash
-# lint the default ~/.ssh/config
-sshconfig-lint
+sshconfig-lint lsp
+```
 
-# lint a specific file
-sshconfig-lint --config /path/to/config
+The v0.5 language server publishes full-line diagnostics on open, change, and save. Untitled buffers run content-only rules; saved files additionally resolve `Include` and filesystem paths.
 
-# json output
+## Output formats
+
+```bash
+sshconfig-lint --format text
 sshconfig-lint --format json
-
-# treat warnings as errors (useful in CI)
-sshconfig-lint --strict
-
-# skip Include resolution
-sshconfig-lint --no-includes
+sshconfig-lint --format github
+sshconfig-lint --format sarif
 ```
 
-### Example output
+JSON findings contain `severity`, `code`, `rule`, `line`, `file`, `message`, `hint`, and `documentation`. Rule codes and exit codes are stable automation interfaces.
 
-```
-line 4: [warning] WILDCARD_ORDER (wildcard-host-order) Host 'github.com' appears after 'Host *' (line 1); it will never match because Host * already matched (hint: move Host * to the end of the file)
-line 7: [warning] DUP_HOST (duplicate-host) duplicate Host block 'github.com' (first seen at line 4) (hint: remove one of the duplicate Host blocks)
-line 3: [error] MISSING_IDENTITY (identity-file-exists) IdentityFile not found: ~/.ssh/id_missing (hint: check the path or remove the directive)
-```
-
-Output is sorted by file and line number so it's deterministic across runs (stable for CI diffs and snapshots).
-
-Errors are red, warnings are yellow, info is cyan. Colors are auto-disabled when stdout isn't a terminal or when `NO_COLOR` is set.
-
-### Exit codes
-
-| Code | Meaning |
-|------|---------|
-| 0 | Clean, no errors found |
-| 1 | At least one error-level finding (or warning with `--strict`) |
-| 2 | Config file not found |
+| Exit | Meaning |
+|---:|---|
+| `0` | No error-level finding, and no warnings with `--strict` |
+| `1` | At least one blocking finding |
+| `2` | At least one requested config could not be read |
 
 ## Rules
 
-Each finding has a stable code you can grep for or match on in scripts.
+| Code | Rule | Severity |
+|---|---|---|
+| `DUP_HOST` | [Duplicate Host block](https://sshconfig-lint.apps.thiering.org/en/rules/duplicate-host) | warning |
+| `MISSING_IDENTITY` | [IdentityFile not found](https://sshconfig-lint.apps.thiering.org/en/rules/identity-file-exists) | error |
+| `WILDCARD_ORDER` | [Host wildcard order](https://sshconfig-lint.apps.thiering.org/en/rules/wildcard-host-order) | warning |
+| `WEAK_ALGO` | [Weak algorithm](https://sshconfig-lint.apps.thiering.org/en/rules/deprecated-weak-algorithms) | warning |
+| `DUP_DIRECTIVE` | [Duplicate directive](https://sshconfig-lint.apps.thiering.org/en/rules/duplicate-directives) | warning |
+| `INSECURE_OPT` | [Insecure option](https://sshconfig-lint.apps.thiering.org/en/rules/insecure-option) | warning |
+| `UNSAFE_CTRL_PATH` | [Unsafe ControlPath](https://sshconfig-lint.apps.thiering.org/en/rules/unsafe-control-path) | warning |
+| `INCLUDE_CYCLE` | [Include cycle](https://sshconfig-lint.apps.thiering.org/en/rules/include-cycle) | error |
+| `INCLUDE_READ` | [Include cannot be read](https://sshconfig-lint.apps.thiering.org/en/rules/include-read) | error |
+| `INCLUDE_GLOB` | [Invalid Include pattern](https://sshconfig-lint.apps.thiering.org/en/rules/include-glob) | error |
+| `INCLUDE_NO_MATCH` | [Include matches no files](https://sshconfig-lint.apps.thiering.org/en/rules/include-no-match) | info |
 
-| Code | Rule | Severity | Description |
-|------|------|----------|-------------|
-| `DUP_HOST` | `duplicate-host` | warning | Two Host blocks with the same pattern |
-| `MISSING_IDENTITY` | `identity-file-exists` | error | IdentityFile path doesn't exist |
-| `WILDCARD_ORDER` | `wildcard-host-order` | warning | Host * appears before specific patterns |
-| `WEAK_ALGO` | `deprecated-weak-algorithms` | warning | Weak or deprecated algorithm (3des-cbc, arcfour, hmac-md5, ssh-dss, etc.) |
-| `DUP_DIRECTIVE` | `duplicate-directives` | warning | Same directive repeated in one scope (only first value takes effect) |
-| `INSECURE_OPT` | `insecure-option` | warning | Dangerous setting like `StrictHostKeyChecking no` or `ForwardAgent yes` on `Host *` |
-| `UNSAFE_CTRL_PATH` | `unsafe-control-path` | warning | ControlPath missing `%h`, `%p`, `%r` (or `%C`) — connections may share a socket |
-| `INCLUDE_CYCLE` | `include-cycle` | error | Circular Include chain |
-| `INCLUDE_READ` | `include-read` | error | Included file can't be read |
-| `INCLUDE_GLOB` | `include-glob` | error | Invalid Include glob pattern |
-| `INCLUDE_NO_MATCH` | `include-no-match` | info | Include pattern matched no files |
-
-Findings include a hint when possible, like "move Host * to the end of the file".
-
-## What it handles
-
-- Multiple host patterns (`Host github.com gitlab.com`)
-- Multiple include patterns (`Include conf.d/*.conf extra.conf`)
-- Inline comments (`IdentityFile ~/.ssh/id # my key`)
-- Quoted values (`ProxyCommand "ssh -W %h:%p bastion"`)
-- Include resolution with cycle detection
+The rule guides show the exact broken fragment, a corrected config, why it matters, and how to verify the result with OpenSSH.
 
 ## Development
 
+Requires Rust 1.85 or newer.
+
 ```bash
-cargo test          # run all tests
-cargo test --lib    # unit tests only
-cargo clippy        # lint
-cargo fmt --check   # formatting
+cargo test --all
+cargo clippy --all-targets --all-features -- -D warnings
+cargo fmt -- --check
 ```
 
-### Project layout
-
-```
-src/
-  main.rs        CLI
-  lib.rs         Public API (lint_file, lint_str)
-  model.rs       AST types
-  lexer.rs       Tokenizer
-  parser.rs      Builds config AST from tokens
-  resolve.rs     Include expansion + cycle detection
-  report.rs      Text and JSON formatters
-  rules/
-    mod.rs       Rule trait and runner
-    basic.rs     Built-in rules
-tests/
-  fixtures/      Sample config files
-  cli.rs         CLI integration tests
-  integration.rs Fixture-based tests
-```
-
-### Adding a rule
-
-1. Implement the `Rule` trait in `src/rules/basic.rs`
-2. Register it in `run_all()` in `src/rules/mod.rs`
-3. Write tests first, then make them pass
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for more detail.
+See [CONTRIBUTING.md](CONTRIBUTING.md), the public [roadmap](ROADMAP.md), and [security policy](SECURITY.md).
 
 ## License
 

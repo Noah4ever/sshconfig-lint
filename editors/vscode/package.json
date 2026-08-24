@@ -1,0 +1,105 @@
+{
+  "name": "sshconfig-lint",
+  "displayName": "sshconfig-lint",
+  "description": "Find semantic mistakes in OpenSSH client configs while you edit.",
+  "version": "0.5.0",
+  "publisher": "Noah4ever",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Noah4ever/sshconfig-lint"
+  },
+  "homepage": "https://sshconfig-lint.apps.thiering.org/en/editor",
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "Linters",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "ssh",
+    "openssh",
+    "config",
+    "linter"
+  ],
+  "main": "./dist/extension.js",
+  "scripts": {
+    "compile": "tsc -p ./ && esbuild src/extension.ts --bundle --platform=node --external:vscode --outfile=dist/extension.js",
+    "check": "tsc -p ./ --noEmit",
+    "test": "npm run compile && node --test tests/*.test.cjs",
+    "package": "npm run compile && npx @vscode/vsce package --no-dependencies",
+    "vscode:prepublish": "npm run compile"
+  },
+  "sshconfigLint": {
+    "cliVersion": "0.5.0"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "sshconfig",
+        "aliases": [
+          "SSH Config",
+          "sshconfig"
+        ],
+        "filenamePatterns": [
+          "**/.ssh/config",
+          "**/ssh_config",
+          "**/dot_ssh/config"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "sshconfig",
+        "scopeName": "source.sshconfig",
+        "path": "./syntaxes/sshconfig.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "sshconfigLint.restartServer",
+        "title": "sshconfig-lint: Restart Language Server"
+      },
+      {
+        "command": "sshconfigLint.showVersion",
+        "title": "sshconfig-lint: Show Version"
+      },
+      {
+        "command": "sshconfigLint.openRuleGuide",
+        "title": "sshconfig-lint: Open Rule Guide"
+      }
+    ],
+    "configuration": {
+      "title": "sshconfig-lint",
+      "properties": {
+        "sshconfigLint.binaryPath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "Optional absolute path to sshconfig-lint. Leave empty to use the verified managed binary."
+        },
+        "sshconfigLint.additionalFilePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "scope": "resource",
+          "description": "Additional glob patterns that should be checked as SSH configs."
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/vscode": "^1.96.0",
+    "@vscode/vsce": "^3.2.1",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.7.2"
+  }
+}

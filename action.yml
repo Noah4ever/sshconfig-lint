@@ -1,0 +1,75 @@
+name: sshconfig-lint
+description: Lint OpenSSH client configs with inline GitHub annotations
+author: Noah Thiering
+
+branding:
+  icon: terminal
+  color: gray-dark
+
+inputs:
+  paths:
+    description: Newline-separated SSH config paths
+    required: false
+    default: .ssh/config
+  strict:
+    description: Fail on warnings as well as errors
+    required: false
+    default: "false"
+  no-includes:
+    description: Skip Include directive resolution
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Install sshconfig-lint
+      if: runner.os != 'Windows'
+      shell: bash
+      env:
+        SSHCONFIG_LINT_VERSION: v0.5.0
+      run: bash "$GITHUB_ACTION_PATH/scripts/install-action.sh"
+
+    - name: Install sshconfig-lint
+      if: runner.os == 'Windows'
+      shell: pwsh
+      env:
+        SSHCONFIG_LINT_VERSION: v0.5.0
+      run: "& $env:GITHUB_ACTION_PATH/scripts/install-action.ps1"
+
+    - name: Lint SSH configs
+      if: runner.os != 'Windows'
+      shell: bash
+      env:
+        INPUT_PATHS: ${{ inputs.paths }}
+        INPUT_STRICT: ${{ inputs.strict }}
+        INPUT_NO_INCLUDES: ${{ inputs.no-includes }}
+      run: |
+        args=()
+        while IFS= read -r path; do
+          if [[ -n "$path" ]]; then
+            args+=("$path")
+          fi
+        done <<< "$INPUT_PATHS"
+        if [[ "$INPUT_STRICT" == "true" ]]; then
+          args+=("--strict")
+        fi
+        if [[ "$INPUT_NO_INCLUDES" == "true" ]]; then
+          args+=("--no-includes")
+        fi
+        sshconfig-lint "${args[@]}" --format github
+
+    - name: Lint SSH configs
+      if: runner.os == 'Windows'
+      shell: pwsh
+      env:
+        INPUT_PATHS: ${{ inputs.paths }}
+        INPUT_STRICT: ${{ inputs.strict }}
+        INPUT_NO_INCLUDES: ${{ inputs.no-includes }}
+      run: |
+        $arguments = @($env:INPUT_PATHS -split "`r?`n" | Where-Object { $_ -ne "" })
+        if ($env:INPUT_STRICT -eq "true") { $arguments += "--strict" }
+        if ($env:INPUT_NO_INCLUDES -eq "true") { $arguments += "--no-includes" }
+        $arguments += @("--format", "github")
+        & sshconfig-lint @arguments
+        exit $LASTEXITCODE

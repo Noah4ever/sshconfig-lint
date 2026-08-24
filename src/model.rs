@@ -120,4 +120,12 @@ impl Finding {
         self.hint = Some(hint.into());
         self
     }
+
+    /// Stable documentation URL for this diagnostic.
+    pub fn documentation_url(&self) -> String {
+        format!(
+            "https://sshconfig-lint.apps.thiering.org/en/rules/{}",
+            self.rule
+        )
+    }
 }

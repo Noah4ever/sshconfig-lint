@@ -29,6 +29,27 @@ pub fn run_all(config: &Config) -> Vec<Finding> {
     findings
 }
 
+/// Run rules that only need the document contents.
+///
+/// Editors use this for untitled buffers where resolving Include and
+/// IdentityFile paths would produce misleading filesystem diagnostics.
+pub fn run_portable(config: &Config) -> Vec<Finding> {
+    let rules: Vec<Box<dyn Rule>> = vec![
+        Box::new(basic::DuplicateHost),
+        Box::new(basic::WildcardHostOrder),
+        Box::new(basic::DeprecatedWeakAlgorithms),
+        Box::new(basic::DuplicateDirectives),
+        Box::new(basic::InsecureOption),
+        Box::new(basic::UnsafeControlPath),
+    ];
+
+    let mut findings = Vec::new();
+    for rule in &rules {
+        findings.extend(rule.check(config));
+    }
+    findings
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

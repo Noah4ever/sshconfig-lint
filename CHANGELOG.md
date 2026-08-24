@@ -1,24 +1,68 @@
 # Changelog
 
-Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project follows semantic versioning.
 
 ## [Unreleased]
+
+## [0.5.0] - 2026-08-24
+
+### Added
+
+- Multiple positional config paths while preserving `--config`
+- SARIF 2.1.0 and native GitHub annotation output
+- Stable documentation links and source files on CLI findings
+- Language Server Protocol support through `sshconfig-lint lsp`
+- VS Code extension with verified managed binary downloads
+- GitHub Marketplace Action for Linux, macOS, and Windows
+- Standard and strict pre-commit hooks
+- SHA256 checksums and release provenance attestations
+- Linux musl and Windows ARM64 release targets
+
+### Changed
+
+- Cargo homepage now points to the browser playground and documentation
+- Release notes are generated automatically
+- Minimum supported Rust version is documented as 1.85
+
+### Security
+
+- Installers verify release binaries against `SHA256SUMS`
+- Editor and Action downloads are version-pinned and checksum-verified
+
+## [0.4.0] - 2026-03-16
+
+### Added
+
+- `unsafe-control-path` rule for connection socket collisions
+
+## [0.3.0] - 2026-03-07
+
+### Added
+
+- `insecure-option` rule for disabled host verification and broadly enabled forwarding
+
+## [0.2.0] - 2026-03-05
+
+### Added
+
+- `deprecated-weak-algorithms` rule
+- `duplicate-directives` rule
+- Homebrew, AUR, release installer, security policy, code of conduct, and issue templates
 
 ## [0.1.0] - 2026-03-04
 
 ### Added
 
 - Lexer with quote-aware tokenization and inline comment stripping
-- Parser that builds an AST from tokenized lines
+- Parser for Host, Match, directives, and Include statements
 - Include resolver with glob expansion and cycle detection
-- Text and JSON output formats
-- Rules:
-  - `duplicate-host`: warn on duplicate Host patterns
-  - `identity-file-exists`: error when IdentityFile path is missing
-  - `wildcard-host-order`: warn when `Host *` shadows later entries
-- CLI with `--config` and `--format` flags
-- CI workflow (tests, clippy, fmt)
-- Release workflow (builds for Linux, macOS, Windows on tag push)
+- Text and JSON output
+- Duplicate Host, missing IdentityFile, and wildcard ordering rules
+- Initial CLI, tests, and multi-platform release workflow
 
-[Unreleased]: https://github.com/Noah4ever/sshconfig-lint/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Noah4ever/sshconfig-lint/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/Noah4ever/sshconfig-lint/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/Noah4ever/sshconfig-lint/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/Noah4ever/sshconfig-lint/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/Noah4ever/sshconfig-lint/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Noah4ever/sshconfig-lint/releases/tag/v0.1.0

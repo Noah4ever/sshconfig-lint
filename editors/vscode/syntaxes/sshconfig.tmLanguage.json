@@ -1,0 +1,46 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "SSH Config",
+  "scopeName": "source.sshconfig",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#section" },
+    { "include": "#directive" },
+    { "include": "#string" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.number-sign.sshconfig",
+          "match": "#.*$"
+        }
+      ]
+    },
+    "section": {
+      "patterns": [
+        {
+          "name": "keyword.control.sshconfig",
+          "match": "(?i)^\\s*(Host|Match|Include)\\b"
+        }
+      ]
+    },
+    "directive": {
+      "patterns": [
+        {
+          "name": "support.type.property-name.sshconfig",
+          "match": "(?i)^\\s*[A-Za-z][A-Za-z0-9]+(?=\\s|=)"
+        }
+      ]
+    },
+    "string": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.sshconfig",
+          "begin": "\"",
+          "end": "\""
+        }
+      ]
+    }
+  }
+}

@@ -64,3 +64,53 @@ fn cli_no_includes_skips_resolution() {
         .assert()
         .success();
 }
+
+#[test]
+fn cli_accepts_multiple_positional_configs() {
+    cargo_bin_cmd!("sshconfig-lint")
+        .arg("tests/fixtures/basic.config")
+        .arg("tests/fixtures/duplicate_host.config")
+        .arg("--format")
+        .arg("json")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "\"file\":\"tests/fixtures/duplicate_host.config\"",
+        ))
+        .stdout(predicate::str::contains("\"code\":\"DUP_HOST\""));
+}
+
+#[test]
+fn cli_sarif_format_is_valid_sarif() {
+    cargo_bin_cmd!("sshconfig-lint")
+        .arg("tests/fixtures/duplicate_host.config")
+        .arg("--format")
+        .arg("sarif")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"version\": \"2.1.0\""))
+        .stdout(predicate::str::contains("DUP_HOST"));
+}
+
+#[test]
+fn cli_github_format_emits_annotations() {
+    cargo_bin_cmd!("sshconfig-lint")
+        .arg("tests/fixtures/duplicate_host.config")
+        .arg("--format")
+        .arg("github")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("::warning file="))
+        .stdout(predicate::str::contains("line=9,title=DUP_HOST"));
+}
+
+#[test]
+fn cli_config_and_positional_path_are_mutually_exclusive() {
+    cargo_bin_cmd!("sshconfig-lint")
+        .arg("--config")
+        .arg("tests/fixtures/basic.config")
+        .arg("tests/fixtures/basic.config")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("cannot be used with"));
+}

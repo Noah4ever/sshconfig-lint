@@ -8,15 +8,15 @@ cd sshconfig-lint
 cargo test
 ```
 
-Requires Rust 1.70+.
+Requires Rust 1.85 or newer.
 
 ## Workflow
 
 1. Fork and create a branch
 2. Write a failing test for what you want to change
 3. Implement until the test passes
-4. Run the full suite: `cargo test`
-5. Check formatting and lints: `cargo fmt --check && cargo clippy -- -D warnings`
+4. Run the full suite: `cargo test --all`
+5. Check formatting and lints: `cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings`
 6. Open a PR
 
 ## Adding a rule
@@ -67,6 +67,16 @@ feat: add duplicate-directive rule
 fix: handle empty Host patterns
 test: add edge case for quoted values
 docs: update rule descriptions
+```
+
+## Editor extension
+
+The VS Code client lives in `editors/vscode` and delegates all diagnostics to `sshconfig-lint lsp`. Do not duplicate lint rules in TypeScript.
+
+```bash
+cd editors/vscode
+npm install
+npm run check
 ```
 
 ## PR checklist

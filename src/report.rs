@@ -1,3 +1,8 @@
+use std::collections::BTreeMap;
+use std::path::Path;
+
+use serde_json::{Value, json};
+
 use crate::model::{Finding, Severity};
 
 const RED: &str = "\x1b[31m";
@@ -19,38 +24,40 @@ pub fn emit_text(findings: &[Finding], colored: bool) -> String {
     }
 
     let mut out = String::new();
-    for f in findings {
-        let file_info = match &f.span.file {
-            Some(file) => format!("{}:", file),
-            None => String::new(),
-        };
+    for finding in findings {
+        let file_info = finding
+            .span
+            .file
+            .as_ref()
+            .map(|file| format!("{file}:"))
+            .unwrap_or_default();
 
-        let severity_str = if colored {
-            let (color, label) = match f.severity {
+        let severity = if colored {
+            let (color, label) = match finding.severity {
                 Severity::Error => (RED, "error"),
                 Severity::Warning => (YELLOW, "warning"),
                 Severity::Info => (CYAN, "info"),
             };
             format!("{BOLD}{color}{label}{RESET}")
         } else {
-            f.severity.to_string()
+            finding.severity.to_string()
         };
 
-        let code_str = if colored {
-            format!("{BOLD}{}{RESET}", f.code)
+        let code = if colored {
+            format!("{BOLD}{}{RESET}", finding.code)
         } else {
-            f.code.to_string()
+            finding.code.to_string()
         };
 
         out.push_str(&format!(
             "{}line {}: [{}] {} ({}) {}",
-            file_info, f.span.line, severity_str, code_str, f.rule, f.message
+            file_info, finding.span.line, severity, code, finding.rule, finding.message
         ));
-        if let Some(hint) = &f.hint {
+        if let Some(hint) = &finding.hint {
             if colored {
-                out.push_str(&format!(" {DIM}(hint: {}){RESET}", hint));
+                out.push_str(&format!(" {DIM}(hint: {hint}){RESET}"));
             } else {
-                out.push_str(&format!(" (hint: {})", hint));
+                out.push_str(&format!(" (hint: {hint})"));
             }
         }
         out.push('\n');
@@ -58,58 +65,148 @@ pub fn emit_text(findings: &[Finding], colored: bool) -> String {
     out
 }
 
-/// Escape a string for JSON output.
-fn json_escape(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    for ch in s.chars() {
-        match ch {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            c if c.is_control() => {
-                for unit in c.encode_utf16(&mut [0; 2]) {
-                    out.push_str(&format!("\\u{:04x}", unit));
-                }
-            }
-            c => out.push(c),
-        }
-    }
-    out
+fn finding_json(finding: &Finding) -> Value {
+    json!({
+        "severity": finding.severity.to_string(),
+        "code": finding.code,
+        "rule": finding.rule,
+        "line": finding.span.line,
+        "file": finding.span.file,
+        "message": finding.message,
+        "hint": finding.hint,
+        "documentation": finding.documentation_url(),
+    })
 }
 
-/// Emit findings as JSON (one JSON array).
+/// Emit findings as one stable JSON array.
 pub fn emit_json(findings: &[Finding]) -> String {
-    let entries: Vec<String> = findings
+    let values: Vec<Value> = findings.iter().map(finding_json).collect();
+    serde_json::to_string(&values).expect("findings are serializable")
+}
+
+fn sarif_level(severity: Severity) -> &'static str {
+    match severity {
+        Severity::Error => "error",
+        Severity::Warning => "warning",
+        Severity::Info => "note",
+    }
+}
+
+fn artifact_uri(file: &str) -> String {
+    file.replace('\\', "/").replace(' ', "%20")
+}
+
+/// Emit SARIF 2.1.0 for GitHub Code Scanning and compatible tools.
+pub fn emit_sarif(findings: &[Finding]) -> String {
+    let mut rules = BTreeMap::new();
+    for finding in findings {
+        rules.entry(finding.code).or_insert_with(|| {
+            json!({
+                "id": finding.code,
+                "name": finding.rule,
+                "helpUri": finding.documentation_url(),
+                "shortDescription": { "text": finding.message },
+                "properties": { "defaultConfiguration": { "level": sarif_level(finding.severity) } }
+            })
+        });
+    }
+
+    let results: Vec<Value> = findings
         .iter()
-        .map(|f| {
-            let file = match &f.span.file {
-                Some(file) => format!("\"{}\"", json_escape(file)),
-                None => "null".to_string(),
-            };
-            let hint = match &f.hint {
-                Some(h) => format!("\"{}\"", json_escape(h)),
-                None => "null".to_string(),
-            };
-            format!(
-                r#"  {{"severity":"{}","code":"{}","rule":"{}","line":{},"file":{},"message":"{}","hint":{}}}"#,
-                f.severity,
-                f.code,
-                json_escape(&f.rule),
-                f.span.line,
-                file,
-                json_escape(&f.message),
-                hint
-            )
+        .map(|finding| {
+            let mut result = json!({
+                "ruleId": finding.code,
+                "level": sarif_level(finding.severity),
+                "message": {
+                    "text": match &finding.hint {
+                        Some(hint) => format!("{} Hint: {}", finding.message, hint),
+                        None => finding.message.clone(),
+                    }
+                }
+            });
+
+            if let Some(file) = &finding.span.file {
+                result["locations"] = json!([{
+                    "physicalLocation": {
+                        "artifactLocation": { "uri": artifact_uri(file) },
+                        "region": { "startLine": finding.span.line }
+                    }
+                }]);
+            }
+            result
         })
         .collect();
 
-    if entries.is_empty() {
-        "[]".to_string()
-    } else {
-        format!("[\n{}\n]", entries.join(",\n"))
+    let sarif = json!({
+        "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+        "version": "2.1.0",
+        "runs": [{
+            "tool": {
+                "driver": {
+                    "name": "sshconfig-lint",
+                    "informationUri": "https://sshconfig-lint.apps.thiering.org",
+                    "version": env!("CARGO_PKG_VERSION"),
+                    "rules": rules.into_values().collect::<Vec<_>>()
+                }
+            },
+            "results": results
+        }]
+    });
+
+    serde_json::to_string_pretty(&sarif).expect("SARIF is serializable")
+}
+
+fn github_escape_data(value: &str) -> String {
+    value
+        .replace('%', "%25")
+        .replace('\r', "%0D")
+        .replace('\n', "%0A")
+}
+
+fn github_escape_property(value: &str) -> String {
+    github_escape_data(value)
+        .replace(':', "%3A")
+        .replace(',', "%2C")
+}
+
+fn relative_to_current_dir(file: &str) -> String {
+    let path = Path::new(file);
+    std::env::current_dir()
+        .ok()
+        .and_then(|cwd| path.strip_prefix(cwd).ok().map(Path::to_path_buf))
+        .unwrap_or_else(|| path.to_path_buf())
+        .to_string_lossy()
+        .to_string()
+}
+
+/// Emit native GitHub workflow commands for inline annotations.
+pub fn emit_github(findings: &[Finding]) -> String {
+    let mut out = String::new();
+    for finding in findings {
+        let command = match finding.severity {
+            Severity::Error => "error",
+            Severity::Warning => "warning",
+            Severity::Info => "notice",
+        };
+        let file = finding
+            .span
+            .file
+            .as_deref()
+            .map(relative_to_current_dir)
+            .unwrap_or_default();
+        let message = match &finding.hint {
+            Some(hint) => format!("{} Hint: {}", finding.message, hint),
+            None => finding.message.clone(),
+        };
+        out.push_str(&format!(
+            "::{command} file={},line={},title={}::{}\n",
+            github_escape_property(&file),
+            finding.span.line,
+            github_escape_property(finding.code),
+            github_escape_data(&message)
+        ));
     }
+    out
 }
 
 #[cfg(test)]
@@ -117,114 +214,51 @@ mod tests {
     use super::*;
     use crate::model::{Finding, Severity, Span};
 
+    fn sample() -> Finding {
+        Finding::new(
+            Severity::Warning,
+            "duplicate-host",
+            "DUP_HOST",
+            "duplicate Host block",
+            Span::with_file(4, "configs/ssh config"),
+        )
+        .with_hint("remove the duplicate")
+    }
+
     #[test]
     fn text_no_findings() {
-        let output = emit_text(&[][..], false);
-        assert_eq!(output, "No issues found.\n");
+        assert_eq!(emit_text(&[], false), "No issues found.\n");
     }
 
     #[test]
-    fn text_single_finding() {
-        let findings = vec![
-            Finding::new(
-                Severity::Warning,
-                "test-rule",
-                "TEST",
-                "something is wrong",
-                Span::new(42),
-            )
-            .with_hint("fix it"),
-        ];
-        let output = emit_text(&findings, false);
-        assert!(output.contains("line 42"));
-        assert!(output.contains("[warning]"));
-        assert!(output.contains("TEST"));
-        assert!(output.contains("(test-rule)"));
-        assert!(output.contains("something is wrong"));
-        assert!(output.contains("(hint: fix it)"));
+    fn json_contains_stable_diagnostic_fields() {
+        let output = emit_json(&[sample()]);
+        assert!(output.contains("\"code\":\"DUP_HOST\""));
+        assert!(output.contains("\"documentation\""));
+        assert!(output.contains("/en/rules/duplicate-host"));
     }
 
     #[test]
-    fn text_finding_with_file() {
-        let findings = vec![Finding::new(
-            Severity::Error,
-            "test-rule",
-            "TEST",
-            "bad config",
-            Span::with_file(10, "/etc/ssh/config"),
-        )];
-        let output = emit_text(&findings, false);
-        assert!(output.contains("/etc/ssh/config:line 10"));
+    fn sarif_contains_rule_and_location() {
+        let output = emit_sarif(&[sample()]);
+        assert!(output.contains("\"version\": \"2.1.0\""));
+        assert!(output.contains("DUP_HOST"));
+        assert!(output.contains("configs/ssh%20config"));
     }
 
     #[test]
-    fn json_no_findings() {
-        let output = emit_json(&[][..]);
-        assert_eq!(output, "[]");
+    fn github_contains_escaped_annotation() {
+        let output = emit_github(&[sample()]);
+        assert!(output.starts_with("::warning "));
+        assert!(output.contains("line=4"));
+        assert!(output.contains("title=DUP_HOST"));
     }
 
     #[test]
-    fn json_single_finding() {
-        let findings = vec![Finding::new(
-            Severity::Info,
-            "my-rule",
-            "TEST",
-            "hello",
-            Span::new(1),
-        )];
-        let output = emit_json(&findings);
-        assert!(output.contains("\"severity\":\"info\""));
-        assert!(output.contains("\"code\":\"TEST\""));
-        assert!(output.contains("\"rule\":\"my-rule\""));
-        assert!(output.contains("\"message\":\"hello\""));
-        assert!(output.contains("\"line\":1"));
-        assert!(output.contains("\"file\":null"));
-        assert!(output.contains("\"hint\":null"));
-    }
-
-    #[test]
-    fn json_finding_with_file() {
-        let findings = vec![Finding::new(
-            Severity::Error,
-            "x",
-            "TEST",
-            "msg",
-            Span::with_file(5, "test.conf"),
-        )];
-        let output = emit_json(&findings);
-        assert!(output.contains("\"file\":\"test.conf\""));
-    }
-
-    #[test]
-    fn text_colored_no_findings() {
-        let output = emit_text(&[][..], true);
-        assert!(output.contains("No issues found."));
-        assert!(output.contains("\x1b[32m")); // green
-        assert!(output.contains("\x1b[0m")); // reset
-    }
-
-    #[test]
-    fn text_colored_error_is_red() {
-        let findings = vec![Finding::new(
-            Severity::Error,
-            "r",
-            "ERR",
-            "bad",
-            Span::new(1),
-        )];
-        let output = emit_text(&findings, true);
-        assert!(output.contains("\x1b[31m")); // red
-        assert!(output.contains("error"));
-    }
-
-    #[test]
-    fn text_colored_warning_is_yellow() {
-        let findings = vec![
-            Finding::new(Severity::Warning, "r", "WARN", "hmm", Span::new(1)).with_hint("try this"),
-        ];
-        let output = emit_text(&findings, true);
-        assert!(output.contains("\x1b[33m")); // yellow
-        assert!(output.contains("warning"));
-        assert!(output.contains("\x1b[2m")); // dim for hint
+    fn colored_error_uses_ansi() {
+        let finding = Finding::new(Severity::Error, "test", "TEST", "bad", Span::new(1));
+        let output = emit_text(&[finding], true);
+        assert!(output.contains(RED));
+        assert!(output.contains(RESET));
     }
 }

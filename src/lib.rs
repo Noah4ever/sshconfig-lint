@@ -1,4 +1,5 @@
 pub mod lexer;
+pub mod lsp;
 pub mod model;
 pub mod parser;
 pub mod report;
@@ -7,7 +8,7 @@ pub mod rules;
 
 use std::path::Path;
 
-use model::Finding;
+use model::{Config, Finding, Item, Span};
 
 /// Sort findings by file then line number for deterministic output.
 fn sort_findings(findings: &mut [Finding]) {
@@ -28,6 +29,59 @@ pub fn lint_str(input: &str) -> Vec<Finding> {
     findings
 }
 
+/// Lint an SSH config from an untitled editor buffer.
+///
+/// Rules that require a real filesystem location are intentionally skipped.
+pub fn lint_str_portable(input: &str) -> Vec<Finding> {
+    let lines = lexer::lex(input);
+    let config = parser::parse(lines);
+    let mut findings = rules::run_portable(&config);
+    sort_findings(&mut findings);
+    findings
+}
+
+fn assign_span_file(span: &mut Span, file: &str) {
+    span.file = Some(file.to_string());
+}
+
+pub(crate) fn assign_file_to_config(config: &mut Config, path: &Path) {
+    let file = path.to_string_lossy();
+
+    fn assign_items(items: &mut [Item], file: &str) {
+        for item in items {
+            match item {
+                Item::Comment { span, .. }
+                | Item::Directive { span, .. }
+                | Item::Include { span, .. } => assign_span_file(span, file),
+                Item::HostBlock { span, items, .. } | Item::MatchBlock { span, items, .. } => {
+                    assign_span_file(span, file);
+                    assign_items(items, file);
+                }
+            }
+        }
+    }
+
+    assign_items(&mut config.items, &file);
+}
+
+/// Lint in-memory contents while associating root diagnostics with `path`.
+/// Include directives are resolved relative to that path when enabled.
+pub fn lint_str_at_path(input: &str, path: &Path, resolve_includes: bool) -> Vec<Finding> {
+    let lines = lexer::lex(input);
+    let mut config = parser::parse(lines);
+    assign_file_to_config(&mut config, path);
+
+    let mut findings = if resolve_includes {
+        let base_dir = path.parent().unwrap_or(Path::new("."));
+        resolve::resolve_includes(&mut config, base_dir)
+    } else {
+        Vec::new()
+    };
+    findings.extend(rules::run_all(&config));
+    sort_findings(&mut findings);
+    findings
+}
+
 /// Lint an SSH config from a string, with Include resolution against a base dir.
 pub fn lint_str_with_includes(input: &str, base_dir: &Path) -> Vec<Finding> {
     let lines = lexer::lex(input);
@@ -41,14 +95,13 @@ pub fn lint_str_with_includes(input: &str, base_dir: &Path) -> Vec<Finding> {
 /// Lint an SSH config file by path, resolving Includes.
 pub fn lint_file(path: &Path) -> Result<Vec<Finding>, std::io::Error> {
     let content = std::fs::read_to_string(path)?;
-    let base_dir = path.parent().unwrap_or(Path::new("."));
-    Ok(lint_str_with_includes(&content, base_dir))
+    Ok(lint_str_at_path(&content, path, true))
 }
 
 /// Lint an SSH config file by path, skipping Include resolution.
 pub fn lint_file_no_includes(path: &Path) -> Result<Vec<Finding>, std::io::Error> {
     let content = std::fs::read_to_string(path)?;
-    Ok(lint_str(&content))
+    Ok(lint_str_at_path(&content, path, false))
 }
 
 /// Returns true if any finding has Error severity.

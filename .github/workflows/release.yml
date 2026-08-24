@@ -17,27 +17,42 @@ jobs:
             os: ubuntu-latest
             bin_name: sshconfig-lint
             asset_name: linux-x86_64
-            package: tar
+            builder: cargo
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
             bin_name: sshconfig-lint
             asset_name: linux-arm64
-            package: tar
+            builder: cross
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            bin_name: sshconfig-lint
+            asset_name: linux-musl-x86_64
+            builder: cross
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            bin_name: sshconfig-lint
+            asset_name: linux-musl-arm64
+            builder: cross
           - target: x86_64-apple-darwin
             os: macos-latest
             bin_name: sshconfig-lint
             asset_name: macos-x86_64
-            package: tar
+            builder: cargo
           - target: aarch64-apple-darwin
             os: macos-latest
             bin_name: sshconfig-lint
             asset_name: macos-arm64
-            package: tar
+            builder: cargo
           - target: x86_64-pc-windows-msvc
             os: windows-latest
             bin_name: sshconfig-lint.exe
             asset_name: windows-x86_64
-            package: exe
+            builder: cargo
+          - target: aarch64-pc-windows-msvc
+            os: windows-latest
+            bin_name: sshconfig-lint.exe
+            asset_name: windows-arm64
+            builder: cargo
 
     steps:
       - uses: actions/checkout@v4
@@ -46,22 +61,21 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Install cross-compilation tools (Linux ARM64)
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
+      - uses: taiki-e/install-action@cross
+        if: matrix.builder == 'cross'
 
-      - name: Build
-        run: cargo build --release --target ${{ matrix.target }}
-        env:
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+      - name: Build with Cargo
+        if: matrix.builder == 'cargo'
+        run: cargo build --locked --release --target ${{ matrix.target }}
+
+      - name: Build with Cross
+        if: matrix.builder == 'cross'
+        run: cross build --locked --release --target ${{ matrix.target }}
 
       - name: Create artifact directory
         run: mkdir -p artifacts
 
-      # ---- Unix: copy binary, chmod, package to tar.gz ----
-      - name: Package (Unix)
+      - name: Package Unix binary
         if: runner.os != 'Windows'
         shell: bash
         run: |
@@ -71,45 +85,50 @@ jobs:
           tar -C artifacts -czf "artifacts/${out}.tar.gz" "${out}"
           rm "artifacts/${out}"
 
-      # ---- Windows: copy .exe (no tar) ----
-      - name: Package (Windows)
+      - name: Package Windows binary
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $out = "sshconfig-lint-${{ matrix.asset_name }}.exe"
           Copy-Item "target\${{ matrix.target }}\release\${{ matrix.bin_name }}" "artifacts\$out"
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: binaries-${{ matrix.asset_name }}
           path: artifacts/
+          if-no-files-found: error
 
   create-release:
-    name: Create Release
+    name: Create verified release
     needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
 
     steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           path: artifacts
           merge-multiple: true
 
-      - name: Flatten artifacts
+      - name: Prepare checksums
         run: |
           mkdir -p release-artifacts
-          find artifacts -type f -maxdepth 2 -exec mv {} release-artifacts/ \;
-          ls -la release-artifacts/
+          find artifacts -maxdepth 2 -type f -exec mv {} release-artifacts/ \;
+          cd release-artifacts
+          sha256sum -- sshconfig-lint-* > SHA256SUMS
 
-      - name: Create Release
+      - name: Attest release artifacts
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: release-artifacts/*
+
+      - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           files: release-artifacts/*
+          generate_release_notes: true
           draft: false
           prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

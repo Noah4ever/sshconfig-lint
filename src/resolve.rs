@@ -144,6 +144,7 @@ fn expand_include(
             Ok(content) => {
                 let lines = lexer::lex(&content);
                 let mut sub_config = parser::parse(lines);
+                crate::assign_file_to_config(&mut sub_config, &canonical);
                 // Resolve includes within the included file.
                 let sub_dir = canonical.parent().unwrap_or(base_dir);
                 let sub_items = resolve_items(&sub_config.items, sub_dir, visited, findings);

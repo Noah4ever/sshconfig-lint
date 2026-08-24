@@ -1,0 +1,7 @@
+.github/**
+src/**
+tests/**
+tsconfig.json
+node_modules/@types/**
+node_modules/typescript/**
+**/*.map
