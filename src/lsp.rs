@@ -194,8 +194,6 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use std::path::Path;
-
     use super::*;
 
     #[test]
@@ -230,7 +228,8 @@ mod tests {
     #[test]
     fn file_buffers_keep_their_source_path() {
         let source = "Host example\nHost example\n";
-        let uri = Url::from_file_path(Path::new("/tmp/ssh_config")).unwrap();
+        let directory = tempfile::tempdir().unwrap();
+        let uri = Url::from_file_path(directory.path().join("ssh_config")).unwrap();
         let diagnostics = diagnostics(source, &uri);
         assert!(diagnostics.iter().any(|diagnostic| {
             diagnostic.code == Some(NumberOrString::String("DUP_HOST".to_string()))
