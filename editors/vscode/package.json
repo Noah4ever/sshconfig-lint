@@ -3,7 +3,7 @@
   "displayName": "sshconfig-lint",
   "description": "Find semantic mistakes in OpenSSH client configs while you edit.",
   "version": "0.5.0",
-  "publisher": "Noah4ever",
+  "publisher": "NoahThiering",
   "license": "MIT",
   "repository": {
     "type": "git",
