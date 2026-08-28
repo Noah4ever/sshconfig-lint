@@ -261,7 +261,7 @@ if should_run homebrew; then
     sha_mac_arm="$(sha256_of_url "$mac_arm")"
 
     pushd "$TAP_DIR" >/dev/null
-    sed_in_place -E "s/^  version \".*\"/  version \"$version\"/" "$TAP_FORMULA"
+    sed_in_place -E "s|(releases/download/v)[0-9][0-9A-Za-z.-]*|\\1$version|g" "$TAP_FORMULA"
 
     update_sha() {
       local platform="$1"
