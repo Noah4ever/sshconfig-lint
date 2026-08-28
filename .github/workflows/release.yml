@@ -98,9 +98,44 @@ jobs:
           path: artifacts/
           if-no-files-found: error
 
+  build-vscode:
+    name: Build VS Code extension
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: editors/vscode/package-lock.json
+
+      - name: Package extension
+        working-directory: editors/vscode
+        run: |
+          npm ci
+          npm run check
+          npm test
+          npm run package
+
+      - name: Collect VSIX
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          find editors/vscode -maxdepth 1 -name '*.vsix' -exec cp {} artifacts/ \;
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: vscode-extension
+          path: artifacts/
+          if-no-files-found: error
+
   create-release:
     name: Create verified release
-    needs: build
+    needs:
+      - build
+      - build-vscode
     runs-on: ubuntu-latest
     permissions:
       contents: write

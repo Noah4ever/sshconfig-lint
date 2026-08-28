@@ -65,7 +65,7 @@ sed_in_place() {
 
 wait_for_release() {
   local release_tag="$1"
-  local expected_assets="${2:-9}"
+  local expected_assets="${2:-10}"
   local max_seconds="${3:-1800}"
   local interval="${4:-10}"
   local waited=0
@@ -214,7 +214,7 @@ mac_arm="$base_url/${ASSET_PREFIX}-macos-arm64.tar.gz"
 
 if should_run wait; then
   echo "== wait for GitHub release =="
-  wait_for_release "$tag" 9 || die "release assets did not appear"
+  wait_for_release "$tag" 10 || die "release assets did not appear"
 fi
 
 if should_run crates; then
