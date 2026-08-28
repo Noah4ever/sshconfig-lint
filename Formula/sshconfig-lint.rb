@@ -2,25 +2,25 @@ class SshconfigLint < Formula
   desc "Linter for OpenSSH client config files"
   homepage "https://github.com/Noah4ever/sshconfig-lint"
   license "MIT"
-  version "0.1.0"
+  version "0.4.0"
 
   on_macos do
     if Hardware::CPU.arm?
       url "https://github.com/Noah4ever/sshconfig-lint/releases/download/v#{version}/sshconfig-lint-macos-arm64.tar.gz"
-      sha256 "1769c6ae9befec7ddf7173637e44102a744f7a9d98bdbac3a68ebd2dd64a4950"
+      sha256 "e2929c229d2c41ef2d6a87422d9ad3be01b325190fd172257671c8f30f6304ac"
     else
       url "https://github.com/Noah4ever/sshconfig-lint/releases/download/v#{version}/sshconfig-lint-macos-x86_64.tar.gz"
-      sha256 "16f6bac929072f75215e00e55e319f41bd25d705543c2ddbbbb04b49ea44e8de"
+      sha256 "8abe32bcdf7414292acbaa020d0ebbbffd80f770b77f2106cd6fbec78897edb6"
     end
   end
 
   on_linux do
     if Hardware::CPU.arm?
       url "https://github.com/Noah4ever/sshconfig-lint/releases/download/v#{version}/sshconfig-lint-linux-arm64.tar.gz"
-      sha256 "08db3193fae246216d8cad0c88cff0faeefaa5a8987e227d0441fbefce82bb1e"
+      sha256 "ca90a819fd065c8b58056759f0279444bb2716336d0cbbf8610e868e76cad3b6"
     else
       url "https://github.com/Noah4ever/sshconfig-lint/releases/download/v#{version}/sshconfig-lint-linux-x86_64.tar.gz"
-      sha256 "d4f39629ad57382807cabb768cbae9bc37939e3dc23e2f218934d28e4e9dcdd3"
+      sha256 "bb4365acf2d9b814d7075f0160126895c480dfee0c1a618e826b1875317fb53a"
     end
   end
 

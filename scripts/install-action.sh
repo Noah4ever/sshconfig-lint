@@ -3,6 +3,10 @@ set -euo pipefail
 
 repo="Noah4ever/sshconfig-lint"
 version="${SSHCONFIG_LINT_VERSION:?SSHCONFIG_LINT_VERSION is required}"
+if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+  echo "error: SSHCONFIG_LINT_VERSION must be a release tag" >&2
+  exit 2
+fi
 
 case "$(uname -s)-$(uname -m)" in
   Linux-x86_64) asset="sshconfig-lint-linux-x86_64.tar.gz" ;;

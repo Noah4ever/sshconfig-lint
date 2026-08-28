@@ -107,7 +107,8 @@ fn check_identity_file(value: &str, span: &Span, findings: &mut Vec<Finding>) {
 }
 
 /// Warns when `Host *` appears before more specific Host blocks.
-/// In OpenSSH, first match wins, so `Host *` should usually come last.
+/// OpenSSH applies all matching blocks but generally keeps the first value it
+/// obtains for each option, so broad defaults should usually come last.
 pub struct WildcardHostOrder;
 
 impl Rule for WildcardHostOrder {
@@ -132,7 +133,7 @@ impl Rule for WildcardHostOrder {
                             "wildcard-host-order",
                             "WILDCARD_ORDER",
                             format!(
-                                "Host '{}' appears after 'Host *' (line {}); it will never match because Host * already matched",
+                                "Host '{}' appears after 'Host *' (line {}); options already set by Host * may not be overridden",
                                 pattern, ws.line
                             ),
                             span.clone(),
