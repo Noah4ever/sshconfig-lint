@@ -32,7 +32,7 @@
     "vscode:prepublish": "npm run compile"
   },
   "sshconfigLint": {
-    "cliVersion": "0.5.0-rc.1"
+    "cliVersion": "0.5.0-rc.2"
   },
   "contributes": {
     "languages": [
