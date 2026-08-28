@@ -11,7 +11,7 @@ sshconfig-lint is the same semantic rule engine everywhere an OpenSSH client con
 - [x] GitHub Action and pre-commit hooks
 - [x] Verified cross-platform releases
 - [ ] Public beta with external dotfiles, homelab, and DevOps users
-- [ ] VS Code Marketplace publication
+- [x] VS Code Marketplace publication
 
 ## v1.0: Stable Contracts
 
