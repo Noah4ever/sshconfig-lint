@@ -31,14 +31,14 @@ runs:
       if: runner.os != 'Windows'
       shell: bash
       env:
-        SSHCONFIG_LINT_VERSION: ${{ inputs.version != '' && inputs.version || 'v0.5.0' }}
+        SSHCONFIG_LINT_VERSION: ${{ inputs.version != '' && inputs.version || (startsWith(github.action_ref, 'v') && github.action_ref || 'v0.5.0') }}
       run: bash "$GITHUB_ACTION_PATH/scripts/install-action.sh"
 
     - name: Install sshconfig-lint
       if: runner.os == 'Windows'
       shell: pwsh
       env:
-        SSHCONFIG_LINT_VERSION: ${{ inputs.version != '' && inputs.version || 'v0.5.0' }}
+        SSHCONFIG_LINT_VERSION: ${{ inputs.version != '' && inputs.version || (startsWith(github.action_ref, 'v') && github.action_ref || 'v0.5.0') }}
       run: "& $env:GITHUB_ACTION_PATH/scripts/install-action.ps1"
 
     - name: Lint SSH configs

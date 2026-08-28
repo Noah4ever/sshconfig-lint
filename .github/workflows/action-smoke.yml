@@ -2,12 +2,6 @@ name: Action smoke test
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: Release tag whose binaries should be tested
-        required: true
-        default: v0.5.0-rc.1
-        type: string
 
 jobs:
   action:
@@ -33,9 +27,8 @@ jobs:
       - name: Exercise the published binary through the Action
         id: lint
         continue-on-error: true
-        uses: ./
+        uses: Noah4ever/sshconfig-lint@v0.5.0-rc.2
         with:
-          version: ${{ inputs.version }}
           paths: .ssh/config
           strict: true
           no-includes: true
