@@ -12,8 +12,6 @@ sshconfig-lint finds semantic mistakes in OpenSSH client configs: duplicate host
 
 The browser checker runs on your device. Config contents are not uploaded and no telemetry is collected.
 
-> Version 0.5 is currently in public beta. Test the [v0.5.0-rc.2 release](https://github.com/Noah4ever/sshconfig-lint/releases/tag/v0.5.0-rc.2) and share feedback in [Discussion #5](https://github.com/Noah4ever/sshconfig-lint/discussions/5).
-
 ## Quick start
 
 ```bash
@@ -54,7 +52,7 @@ The [release page](https://github.com/Noah4ever/sshconfig-lint/releases) provide
 curl -fsSL https://raw.githubusercontent.com/Noah4ever/sshconfig-lint/main/install.sh | bash
 ```
 
-Set `VERSION=v0.5.0-rc.2` to test the beta or `INSTALL_DIR=~/.local/bin` to override the destination.
+Set `VERSION=v0.5.0` or `INSTALL_DIR=~/.local/bin` to override the defaults.
 
 ## GitHub Actions
 
@@ -67,7 +65,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: Noah4ever/sshconfig-lint@v0.5.0-rc.2
+      - uses: Noah4ever/sshconfig-lint@v0.5.0
         with:
           paths: |
             .ssh/config
@@ -91,7 +89,7 @@ For repositories with GitHub Code Scanning enabled, SARIF can be uploaded separa
 ```yaml
 repos:
   - repo: https://github.com/Noah4ever/sshconfig-lint
-    rev: v0.5.0-rc.2
+    rev: v0.5.0
     hooks:
       - id: sshconfig-lint-strict
 ```

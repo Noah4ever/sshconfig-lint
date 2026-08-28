@@ -27,7 +27,7 @@ jobs:
       - name: Exercise the published binary through the Action
         id: lint
         continue-on-error: true
-        uses: Noah4ever/sshconfig-lint@v0.5.0-rc.2
+        uses: Noah4ever/sshconfig-lint@v0.5.0
         with:
           paths: .ssh/config
           strict: true
