@@ -98,7 +98,13 @@ Use `id: sshconfig-lint` when warnings should not block a commit. Override `file
 
 ## Editors
 
-The VS Code extension in [`editors/vscode`](editors/vscode) starts `sshconfig-lint lsp`, downloads a matching verified binary once, and then works offline. It recognizes `.ssh/config`, `ssh_config`, and chezmoi's `dot_ssh/config`. No telemetry is collected.
+Install the [VS Code extension](https://marketplace.visualstudio.com/items?itemName=NoahThiering.sshconfig-lint) from the Marketplace or run:
+
+```bash
+code --install-extension NoahThiering.sshconfig-lint
+```
+
+The extension starts `sshconfig-lint lsp`, downloads a matching verified binary once, and then works offline. It recognizes `.ssh/config`, `ssh_config`, and chezmoi's `dot_ssh/config`. No telemetry is collected. Its source is available in [`editors/vscode`](editors/vscode).
 
 Any editor with LSP support can start:
 
