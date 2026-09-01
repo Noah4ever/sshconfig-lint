@@ -4,10 +4,19 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 
 ## [Unreleased]
 
+### Added
+
+- Validate `Port` values as integers from 1 through 65535 in root, `Host`, and `Match` scopes
+- Add the stable `INVALID_VALUE` diagnostic for table-driven directive value validation
+
 ### Changed
 
 - Document the test-first checkpoint plan from v0.5 to v1.0
 - Prepare a macOS-friendly release workflow that does not publish checkpoint tags
+
+### Fixed
+
+- Accept OpenSSH's `IdentityFile none` sentinel instead of reporting it as a missing file
 
 ## [0.5.0] - 2026-08-24
 

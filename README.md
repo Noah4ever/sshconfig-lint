@@ -135,6 +135,7 @@ JSON findings contain `severity`, `code`, `rule`, `line`, `file`, `message`, `hi
 
 | Code | Rule | Severity |
 |---|---|---|
+| `INVALID_VALUE` | [Invalid directive value](https://sshconfig-lint.apps.thiering.org/en/rules/invalid-directive-value) | error |
 | `DUP_HOST` | [Duplicate Host block](https://sshconfig-lint.apps.thiering.org/en/rules/duplicate-host) | warning |
 | `MISSING_IDENTITY` | [IdentityFile not found](https://sshconfig-lint.apps.thiering.org/en/rules/identity-file-exists) | error |
 | `WILDCARD_ORDER` | [Host wildcard order](https://sshconfig-lint.apps.thiering.org/en/rules/wildcard-host-order) | warning |

@@ -1,0 +1,5 @@
+---
+source: tests/integration.rs
+expression: output
+---
+[{"code":"INVALID_VALUE","documentation":"https://sshconfig-lint.apps.thiering.org/en/rules/invalid-directive-value","file":null,"hint":"use a port number from 1 to 65535","line":1,"message":"invalid value '0' for Port; expected an integer from 1 to 65535","rule":"invalid-directive-value","severity":"error"},{"code":"INVALID_VALUE","documentation":"https://sshconfig-lint.apps.thiering.org/en/rules/invalid-directive-value","file":null,"hint":"use a port number from 1 to 65535","line":3,"message":"invalid value 'nope' for Port; expected an integer from 1 to 65535","rule":"invalid-directive-value","severity":"error"},{"code":"INVALID_VALUE","documentation":"https://sshconfig-lint.apps.thiering.org/en/rules/invalid-directive-value","file":null,"hint":"use a port number from 1 to 65535","line":5,"message":"invalid value '65536' for Port; expected an integer from 1 to 65535","rule":"invalid-directive-value","severity":"error"}]

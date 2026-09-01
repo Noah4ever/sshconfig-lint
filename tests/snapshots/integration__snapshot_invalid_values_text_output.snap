@@ -1,0 +1,7 @@
+---
+source: tests/integration.rs
+expression: output
+---
+line 1: [error] INVALID_VALUE (invalid-directive-value) invalid value '0' for Port; expected an integer from 1 to 65535 (hint: use a port number from 1 to 65535)
+line 3: [error] INVALID_VALUE (invalid-directive-value) invalid value 'nope' for Port; expected an integer from 1 to 65535 (hint: use a port number from 1 to 65535)
+line 5: [error] INVALID_VALUE (invalid-directive-value) invalid value '65536' for Port; expected an integer from 1 to 65535 (hint: use a port number from 1 to 65535)

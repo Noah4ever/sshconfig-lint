@@ -92,6 +92,36 @@ Host github.com
 }
 
 #[test]
+fn snapshot_invalid_values_text_output() {
+    let findings = lint_str(
+        "\
+Port 0
+Host example.com
+  Port nope
+Match host internal.example.com
+  Port 65536
+",
+    );
+    let output = sshconfig_lint::report::emit_text(&findings, false);
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_invalid_values_json_output() {
+    let findings = lint_str(
+        "\
+Port 0
+Host example.com
+  Port nope
+Match host internal.example.com
+  Port 65536
+",
+    );
+    let output = sshconfig_lint::report::emit_json(&findings);
+    insta::assert_snapshot!(output);
+}
+
+#[test]
 fn fixture_multiple_patterns() {
     let path = Path::new("tests/fixtures/multiple_patterns.config");
     let findings = lint_file(path).expect("should read fixture");

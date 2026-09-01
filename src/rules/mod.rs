@@ -13,6 +13,7 @@ pub trait Rule {
 /// Run all registered rules against a config and return merged findings.
 pub fn run_all(config: &Config) -> Vec<Finding> {
     let rules: Vec<Box<dyn Rule>> = vec![
+        Box::new(basic::InvalidDirectiveValue),
         Box::new(basic::DuplicateHost),
         Box::new(basic::IdentityFileExists),
         Box::new(basic::WildcardHostOrder),
@@ -35,6 +36,7 @@ pub fn run_all(config: &Config) -> Vec<Finding> {
 /// IdentityFile paths would produce misleading filesystem diagnostics.
 pub fn run_portable(config: &Config) -> Vec<Finding> {
     let rules: Vec<Box<dyn Rule>> = vec![
+        Box::new(basic::InvalidDirectiveValue),
         Box::new(basic::DuplicateHost),
         Box::new(basic::WildcardHostOrder),
         Box::new(basic::DeprecatedWeakAlgorithms),

@@ -33,12 +33,12 @@ with `v`, such as `v1.0.0`, build and publish a GitHub release.
 
 Suggested tag: `checkpoint/01-value-foundation`
 
-- [ ] Validate `Port` as an integer from 1 through 65535
-- [ ] Accept the OpenSSH sentinel value `IdentityFile none`
-- [ ] Introduce a table-driven value-validation rule with one stable public
+- [x] Validate `Port` as an integer from 1 through 65535
+- [x] Accept the OpenSSH sentinel value `IdentityFile none`
+- [x] Introduce a table-driven value-validation rule with one stable public
       code and consistent messages, hints, and documentation links
-- [ ] Cover root, `Host`, and `Match` scopes
-- [ ] Add text and JSON snapshots for invalid values
+- [x] Cover root, `Host`, and `Match` scopes
+- [x] Add text and JSON snapshots for invalid values
 
 ## Checkpoint 02: numeric values
 

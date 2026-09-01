@@ -4,6 +4,94 @@ use std::path::Path;
 use crate::model::{Config, Finding, Item, Severity, Span};
 use crate::rules::Rule;
 
+#[derive(Clone, Copy)]
+enum ValueConstraint {
+    UnsignedIntegerRange { min: u64, max: u64 },
+}
+
+impl ValueConstraint {
+    fn accepts(self, value: &str) -> bool {
+        match self {
+            Self::UnsignedIntegerRange { min, max } => {
+                !value.is_empty()
+                    && value.bytes().all(|byte| byte.is_ascii_digit())
+                    && value
+                        .parse::<u64>()
+                        .is_ok_and(|number| (min..=max).contains(&number))
+            }
+        }
+    }
+}
+
+struct DirectiveValueSpec {
+    directive: &'static str,
+    constraint: ValueConstraint,
+    expected: &'static str,
+    hint: &'static str,
+}
+
+const DIRECTIVE_VALUE_SPECS: &[DirectiveValueSpec] = &[DirectiveValueSpec {
+    directive: "Port",
+    constraint: ValueConstraint::UnsignedIntegerRange {
+        min: 1,
+        max: 65_535,
+    },
+    expected: "an integer from 1 to 65535",
+    hint: "use a port number from 1 to 65535",
+}];
+
+/// Errors when a directive has a value OpenSSH does not accept.
+pub struct InvalidDirectiveValue;
+
+impl Rule for InvalidDirectiveValue {
+    fn name(&self) -> &'static str {
+        "invalid-directive-value"
+    }
+
+    fn check(&self, config: &Config) -> Vec<Finding> {
+        let mut findings = Vec::new();
+        collect_invalid_value_findings(&config.items, &mut findings);
+        findings
+    }
+}
+
+fn collect_invalid_value_findings(items: &[Item], findings: &mut Vec<Finding>) {
+    for item in items {
+        match item {
+            Item::Directive {
+                key, value, span, ..
+            } => {
+                let Some(spec) = DIRECTIVE_VALUE_SPECS
+                    .iter()
+                    .find(|spec| key.eq_ignore_ascii_case(spec.directive))
+                else {
+                    continue;
+                };
+                if spec.constraint.accepts(value) {
+                    continue;
+                }
+                findings.push(
+                    Finding::new(
+                        Severity::Error,
+                        "invalid-directive-value",
+                        "INVALID_VALUE",
+                        format!(
+                            "invalid value '{}' for {}; expected {}",
+                            value, spec.directive, spec.expected
+                        ),
+                        span.clone(),
+                    )
+                    .with_hint(spec.hint),
+                );
+            }
+            Item::HostBlock { items, .. } | Item::MatchBlock { items, .. } => {
+                collect_invalid_value_findings(items, findings);
+            }
+            _ => {}
+        }
+    }
+}
+
 /// Warns when multiple Host blocks have the same pattern.
 pub struct DuplicateHost;
 
@@ -77,8 +165,9 @@ fn collect_identity_findings(items: &[Item], findings: &mut Vec<Finding>) {
 }
 
 fn check_identity_file(value: &str, span: &Span, findings: &mut Vec<Finding>) {
-    // Skip template variables
-    if value.contains('%') || value.contains("${") {
+    // OpenSSH uses "none" to explicitly disable identity files. Template
+    // variables cannot be resolved reliably without a concrete connection.
+    if value.eq_ignore_ascii_case("none") || value.contains('%') || value.contains("${") {
         return;
     }
 
