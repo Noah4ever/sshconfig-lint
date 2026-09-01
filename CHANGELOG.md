@@ -4,6 +4,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 
 ## [Unreleased]
 
+### Changed
+
+- Document the test-first checkpoint plan from v0.5 to v1.0
+- Prepare a macOS-friendly release workflow that does not publish checkpoint tags
+
 ## [0.5.0] - 2026-08-24
 
 ### Added

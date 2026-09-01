@@ -1,5 +1,6 @@
 /target
 /editors/vscode/node_modules
 /editors/vscode/dist
+/release-artifacts
 *.vsix
 .DS_Store
