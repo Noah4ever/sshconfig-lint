@@ -7,20 +7,212 @@ use crate::rules::Rule;
 #[derive(Clone, Copy)]
 enum ValueConstraint {
     UnsignedIntegerRange { min: u64, max: u64 },
+    NonNegativeTimeOrNone,
+    OctalMask,
+    IpQos,
 }
 
 impl ValueConstraint {
     fn accepts(self, value: &str) -> bool {
+        let Some(arguments) = parse_value_arguments(value) else {
+            return false;
+        };
+
         match self {
-            Self::UnsignedIntegerRange { min, max } => {
-                !value.is_empty()
-                    && value.bytes().all(|byte| byte.is_ascii_digit())
-                    && value
-                        .parse::<u64>()
-                        .is_ok_and(|number| (min..=max).contains(&number))
+            Self::UnsignedIntegerRange { min, max } => match arguments.as_slice() {
+                [argument] => parse_unsigned_decimal(argument)
+                    .is_some_and(|number| (min..=max).contains(&number)),
+                _ => false,
+            },
+            Self::NonNegativeTimeOrNone => match arguments.as_slice() {
+                [argument] => argument == "none" || parse_time_seconds(argument).is_some(),
+                _ => false,
+            },
+            Self::OctalMask => match arguments.as_slice() {
+                [argument] => parse_octal_mask(argument).is_some(),
+                _ => false,
+            },
+            Self::IpQos => {
+                (1..=2).contains(&arguments.len())
+                    && arguments.iter().all(|argument| accepts_ipqos(argument))
             }
         }
     }
+}
+
+fn parse_value_arguments(value: &str) -> Option<Vec<String>> {
+    let mut arguments = Vec::new();
+    let mut current = String::new();
+    let mut quoted = false;
+    let mut escaped = false;
+    let mut started = false;
+
+    for character in value.chars() {
+        if escaped {
+            current.push(character);
+            escaped = false;
+            started = true;
+            continue;
+        }
+
+        match character {
+            '\\' if quoted => {
+                escaped = true;
+                started = true;
+            }
+            '"' => {
+                quoted = !quoted;
+                started = true;
+            }
+            character if character.is_whitespace() && !quoted => {
+                if started {
+                    arguments.push(std::mem::take(&mut current));
+                    started = false;
+                }
+            }
+            _ => {
+                current.push(character);
+                started = true;
+            }
+        }
+    }
+
+    if quoted || escaped {
+        return None;
+    }
+    if started {
+        arguments.push(current);
+    }
+    Some(arguments)
+}
+
+fn parse_unsigned_decimal(value: &str) -> Option<u64> {
+    let digits = value.strip_prefix('+').unwrap_or(value);
+    if digits.is_empty() || !digits.bytes().all(|byte| byte.is_ascii_digit()) {
+        return None;
+    }
+    digits.parse().ok()
+}
+
+fn parse_time_seconds(value: &str) -> Option<u64> {
+    const MAX_SECONDS: f64 = i32::MAX as f64;
+
+    if value.is_empty() || !value.is_ascii() {
+        return None;
+    }
+
+    let bytes = value.as_bytes();
+    let mut index = 0;
+    let mut total = 0.0;
+    let mut seen_seconds = false;
+
+    while index < bytes.len() {
+        let start = index;
+        let mut digits = 0;
+        let mut dots = 0;
+        while index < bytes.len() && (bytes[index].is_ascii_digit() || bytes[index] == b'.') {
+            if bytes[index] == b'.' {
+                dots += 1;
+            } else {
+                digits += 1;
+            }
+            index += 1;
+        }
+        if digits == 0 || dots > 1 {
+            return None;
+        }
+
+        let number_text = &value[start..index];
+        if dots == 1
+            && !number_text
+                .as_bytes()
+                .last()
+                .is_some_and(|byte| byte.is_ascii_digit())
+        {
+            return None;
+        }
+        let number = number_text.parse::<f64>().ok()?;
+
+        let unit = bytes.get(index).copied();
+        let multiplier = match unit {
+            None => 1.0,
+            Some(b's' | b'S') => 1.0,
+            Some(b'm' | b'M') => 60.0,
+            Some(b'h' | b'H') => 60.0 * 60.0,
+            Some(b'd' | b'D') => 24.0 * 60.0 * 60.0,
+            Some(b'w' | b'W') => 7.0 * 24.0 * 60.0 * 60.0,
+            _ => return None,
+        };
+
+        if dots == 1 && multiplier != 1.0 {
+            return None;
+        }
+        if multiplier == 1.0 {
+            if seen_seconds {
+                return None;
+            }
+            seen_seconds = true;
+        }
+
+        total += number * multiplier;
+        if !total.is_finite() || total > MAX_SECONDS {
+            return None;
+        }
+
+        if unit.is_some() {
+            index += 1;
+        }
+    }
+
+    Some(total as u64)
+}
+
+fn parse_octal_mask(value: &str) -> Option<u16> {
+    let digits = value.strip_prefix('+').unwrap_or(value);
+    if digits.is_empty() || !digits.bytes().all(|byte| matches!(byte, b'0'..=b'7')) {
+        return None;
+    }
+    let mask = u16::from_str_radix(digits, 8).ok()?;
+    (mask <= 0o777).then_some(mask)
+}
+
+const IPQOS_NAMES: &[&str] = &[
+    "none",
+    "af11",
+    "af12",
+    "af13",
+    "af21",
+    "af22",
+    "af23",
+    "af31",
+    "af32",
+    "af33",
+    "af41",
+    "af42",
+    "af43",
+    "cs0",
+    "cs1",
+    "cs2",
+    "cs3",
+    "cs4",
+    "cs5",
+    "cs6",
+    "cs7",
+    "ef",
+    "le",
+    "va",
+    // OpenSSH still accepts these deprecated aliases and falls back to the
+    // operating-system default. A future rule may warn about them.
+    "lowdelay",
+    "throughput",
+    "reliability",
+];
+
+fn accepts_ipqos(value: &str) -> bool {
+    IPQOS_NAMES
+        .iter()
+        .any(|name| value.eq_ignore_ascii_case(name))
+        || parse_unsigned_decimal(value).is_some_and(|number| number <= 255)
 }
 
 struct DirectiveValueSpec {
@@ -30,15 +222,77 @@ struct DirectiveValueSpec {
     hint: &'static str,
 }
 
-const DIRECTIVE_VALUE_SPECS: &[DirectiveValueSpec] = &[DirectiveValueSpec {
-    directive: "Port",
-    constraint: ValueConstraint::UnsignedIntegerRange {
-        min: 1,
-        max: 65_535,
+const DIRECTIVE_VALUE_SPECS: &[DirectiveValueSpec] = &[
+    DirectiveValueSpec {
+        directive: "Port",
+        constraint: ValueConstraint::UnsignedIntegerRange {
+            min: 1,
+            max: 65_535,
+        },
+        expected: "an integer from 1 to 65535",
+        hint: "use a port number from 1 to 65535",
     },
-    expected: "an integer from 1 to 65535",
-    hint: "use a port number from 1 to 65535",
-}];
+    DirectiveValueSpec {
+        directive: "ConnectionAttempts",
+        constraint: ValueConstraint::UnsignedIntegerRange {
+            min: 1,
+            max: i32::MAX as u64,
+        },
+        expected: "an integer from 1 to 2147483647",
+        hint: "use at least 1 connection attempt",
+    },
+    DirectiveValueSpec {
+        directive: "ConnectTimeout",
+        constraint: ValueConstraint::NonNegativeTimeOrNone,
+        expected: "a non-negative time value or none",
+        hint: "use seconds, a duration such as 1m30s, or none",
+    },
+    DirectiveValueSpec {
+        directive: "NumberOfPasswordPrompts",
+        constraint: ValueConstraint::UnsignedIntegerRange {
+            min: 0,
+            max: i32::MAX as u64,
+        },
+        expected: "an integer from 0 to 2147483647",
+        hint: "use a non-negative integer no greater than 2147483647",
+    },
+    DirectiveValueSpec {
+        directive: "ServerAliveInterval",
+        constraint: ValueConstraint::NonNegativeTimeOrNone,
+        expected: "a non-negative time value or none",
+        hint: "use seconds, a duration such as 1m30s, or none",
+    },
+    DirectiveValueSpec {
+        directive: "ServerAliveCountMax",
+        constraint: ValueConstraint::UnsignedIntegerRange {
+            min: 0,
+            max: i32::MAX as u64,
+        },
+        expected: "an integer from 0 to 2147483647",
+        hint: "use a non-negative integer no greater than 2147483647",
+    },
+    DirectiveValueSpec {
+        directive: "CanonicalizeMaxDots",
+        constraint: ValueConstraint::UnsignedIntegerRange {
+            min: 0,
+            max: i32::MAX as u64,
+        },
+        expected: "an integer from 0 to 2147483647",
+        hint: "use a non-negative integer no greater than 2147483647",
+    },
+    DirectiveValueSpec {
+        directive: "StreamLocalBindMask",
+        constraint: ValueConstraint::OctalMask,
+        expected: "an octal mask from 0000 to 0777",
+        hint: "use a complete octal value from 0000 to 0777, for example 0177",
+    },
+    DirectiveValueSpec {
+        directive: "IPQoS",
+        constraint: ValueConstraint::IpQos,
+        expected: "one or two DSCP names or numbers from 0 to 255",
+        hint: "use a DSCP name such as af21, a number from 0 to 255, or none",
+    },
+];
 
 /// Errors when a directive has a value OpenSSH does not accept.
 pub struct InvalidDirectiveValue;

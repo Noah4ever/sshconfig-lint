@@ -122,6 +122,40 @@ Match host internal.example.com
 }
 
 #[test]
+fn snapshot_numeric_values_text_output() {
+    let findings = lint_str(
+        "\
+ConnectionAttempts 0
+ConnectTimeout +1
+Host example.com
+  ServerAliveCountMax -1
+  StreamLocalBindMask 0788
+Match host internal.example.com
+  IPQoS af21 bogus
+",
+    );
+    let output = sshconfig_lint::report::emit_text(&findings, false);
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_numeric_values_json_output() {
+    let findings = lint_str(
+        "\
+ConnectionAttempts 0
+ConnectTimeout +1
+Host example.com
+  ServerAliveCountMax -1
+  StreamLocalBindMask 0788
+Match host internal.example.com
+  IPQoS af21 bogus
+",
+    );
+    let output = sshconfig_lint::report::emit_json(&findings);
+    insta::assert_snapshot!(output);
+}
+
+#[test]
 fn fixture_multiple_patterns() {
     let path = Path::new("tests/fixtures/multiple_patterns.config");
     let findings = lint_file(path).expect("should read fixture");

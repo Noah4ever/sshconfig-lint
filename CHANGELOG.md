@@ -8,11 +8,15 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 
 - Validate `Port` values as integers from 1 through 65535 in root, `Host`, and `Match` scopes
 - Add the stable `INVALID_VALUE` diagnostic for table-driven directive value validation
+- Validate numeric values for `ConnectionAttempts`, `NumberOfPasswordPrompts`, `ServerAliveCountMax`, and `CanonicalizeMaxDots`
+- Validate OpenSSH duration syntax for `ConnectTimeout` and `ServerAliveInterval`
+- Validate complete octal `StreamLocalBindMask` values and one or two `IPQoS` arguments
 
 ### Changed
 
 - Document the test-first checkpoint plan from v0.5 to v1.0
 - Prepare a macOS-friendly release workflow that does not publish checkpoint tags
+- Accept OpenSSH-compatible quoted numeric values and explicit positive signs
 
 ### Fixed
 

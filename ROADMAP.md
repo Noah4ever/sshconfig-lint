@@ -44,15 +44,15 @@ Suggested tag: `checkpoint/01-value-foundation`
 
 Suggested tag: `checkpoint/02-numeric-values`
 
-- [ ] `ConnectionAttempts` is an integer greater than or equal to 1
-- [ ] `ConnectTimeout` is an integer greater than or equal to 0
-- [ ] `NumberOfPasswordPrompts` is an integer greater than or equal to 0
-- [ ] `ServerAliveInterval` is an integer greater than or equal to 0
-- [ ] `ServerAliveCountMax` is an integer greater than or equal to 0
-- [ ] `CanonicalizeMaxDots` is an integer greater than or equal to 0
-- [ ] `StreamLocalBindMask` is a valid octal mask
-- [ ] `IPQoS` accepts documented names or numeric values from 0 through 255
-- [ ] Test boundary values, signs, decimals, empty values, and overflow
+- [x] `ConnectionAttempts` is an integer greater than or equal to 1
+- [x] `ConnectTimeout` accepts non-negative OpenSSH time formats or `none`
+- [x] `NumberOfPasswordPrompts` is an integer greater than or equal to 0
+- [x] `ServerAliveInterval` accepts non-negative OpenSSH time formats or `none`
+- [x] `ServerAliveCountMax` is an integer greater than or equal to 0
+- [x] `CanonicalizeMaxDots` is an integer greater than or equal to 0
+- [x] `StreamLocalBindMask` is a complete octal mask from `0000` to `0777`
+- [x] `IPQoS` accepts one or two DSCP names or numeric values from 0 through 255
+- [x] Test boundaries, signs, decimals, quotes, extra arguments, empty values, and overflow
 
 ## Checkpoint 03: enumerated values
 

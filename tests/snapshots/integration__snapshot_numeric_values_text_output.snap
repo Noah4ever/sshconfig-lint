@@ -1,0 +1,9 @@
+---
+source: tests/integration.rs
+expression: output
+---
+line 1: [error] INVALID_VALUE (invalid-directive-value) invalid value '0' for ConnectionAttempts; expected an integer from 1 to 2147483647 (hint: use at least 1 connection attempt)
+line 2: [error] INVALID_VALUE (invalid-directive-value) invalid value '+1' for ConnectTimeout; expected a non-negative time value or none (hint: use seconds, a duration such as 1m30s, or none)
+line 4: [error] INVALID_VALUE (invalid-directive-value) invalid value '-1' for ServerAliveCountMax; expected an integer from 0 to 2147483647 (hint: use a non-negative integer no greater than 2147483647)
+line 5: [error] INVALID_VALUE (invalid-directive-value) invalid value '0788' for StreamLocalBindMask; expected an octal mask from 0000 to 0777 (hint: use a complete octal value from 0000 to 0777, for example 0177)
+line 7: [error] INVALID_VALUE (invalid-directive-value) invalid value 'af21 bogus' for IPQoS; expected one or two DSCP names or numbers from 0 to 255 (hint: use a DSCP name such as af21, a number from 0 to 255, or none)
