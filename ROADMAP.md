@@ -58,16 +58,24 @@ Suggested tag: `checkpoint/02-numeric-values`
 
 Suggested tag: `checkpoint/03-enumerated-values`
 
-- [ ] Validate stable values for `AddressFamily`
-- [ ] Validate stable values for `RequestTTY` and `SessionType`
-- [ ] Validate stable values for `ControlMaster`
-- [ ] Validate stable values for `CanonicalizeHostname`
-- [ ] Validate stable values for `StrictHostKeyChecking`
-- [ ] Validate stable values for `UpdateHostKeys` and `VerifyHostKeyDNS`
-- [ ] Validate stable values for `Tunnel`
-- [ ] Validate stable values for `LogLevel` and `SyslogFacility`
-- [ ] Validate stable values for `PubkeyAuthentication`
-- [ ] Document version-sensitive values that are intentionally not validated
+- [x] Validate stable values for `AddressFamily`
+- [x] Validate stable values for `RequestTTY` and `SessionType`
+- [x] Validate stable values for `ControlMaster`
+- [x] Validate stable values for `CanonicalizeHostname`
+- [x] Validate stable values for `StrictHostKeyChecking`
+- [x] Validate stable values for `UpdateHostKeys` and `VerifyHostKeyDNS`
+- [x] Validate stable values for `Tunnel`
+- [x] Validate stable values for `LogLevel` and `SyslogFacility`
+- [x] Validate stable values for `PubkeyAuthentication`
+- [x] Document version-sensitive values that are intentionally not validated
+
+The validator follows the current portable OpenSSH parser and does not reject
+valid syntax based on the OpenSSH version installed on the machine running the
+linter. This intentionally accepts modern values such as
+`StrictHostKeyChecking accept-new` and `PubkeyAuthentication unbound` or
+`host-bound`, plus the platform-dependent `SyslogFacility AUTHPRIV`. Users of
+older clients should check their local `ssh_config(5)` when sharing configs
+across mixed OpenSSH versions.
 
 ## Checkpoint 04: small semantic traps
 

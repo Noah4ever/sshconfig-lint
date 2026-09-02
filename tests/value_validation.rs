@@ -398,3 +398,186 @@ Host example.com
         "OpenSSH's IdentityFile none sentinel must not be treated as a path: {findings:?}"
     );
 }
+
+const ENUM_CASES: &[(&str, &[&str], &str, &str)] = &[
+    (
+        "AddressFamily",
+        &["any", "inet", "inet6"],
+        "one of: any, inet, inet6",
+        "use any, inet, or inet6",
+    ),
+    (
+        "RequestTTY",
+        &["true", "false", "yes", "no", "force", "auto"],
+        "one of: true, false, yes, no, force, auto",
+        "use yes, no, force, or auto; true and false are also accepted",
+    ),
+    (
+        "SessionType",
+        &["none", "subsystem", "default"],
+        "one of: none, subsystem, default",
+        "use none, subsystem, or default",
+    ),
+    (
+        "ControlMaster",
+        &["true", "false", "yes", "no", "auto", "ask", "autoask"],
+        "one of: true, false, yes, no, auto, ask, autoask",
+        "use yes, no, auto, ask, or autoask; true and false are also accepted",
+    ),
+    (
+        "CanonicalizeHostname",
+        &["true", "false", "yes", "no", "always"],
+        "one of: true, false, yes, no, always",
+        "use yes, no, or always; true and false are also accepted",
+    ),
+    (
+        "StrictHostKeyChecking",
+        &["true", "false", "yes", "no", "ask", "off", "accept-new"],
+        "one of: true, false, yes, no, ask, off, accept-new",
+        "use yes, ask, accept-new, no, or off; true and false are also accepted",
+    ),
+    (
+        "UpdateHostKeys",
+        &["true", "false", "yes", "no", "ask"],
+        "one of: true, false, yes, no, ask",
+        "use yes, no, or ask; true and false are also accepted",
+    ),
+    (
+        "VerifyHostKeyDNS",
+        &["true", "false", "yes", "no", "ask"],
+        "one of: true, false, yes, no, ask",
+        "use yes, no, or ask; true and false are also accepted",
+    ),
+    (
+        "Tunnel",
+        &["ethernet", "point-to-point", "true", "false", "yes", "no"],
+        "one of: ethernet, point-to-point, true, false, yes, no",
+        "use ethernet, point-to-point, yes, or no; true and false are also accepted",
+    ),
+    (
+        "LogLevel",
+        &[
+            "QUIET", "FATAL", "ERROR", "INFO", "VERBOSE", "DEBUG", "DEBUG1", "DEBUG2", "DEBUG3",
+        ],
+        "one of: QUIET, FATAL, ERROR, INFO, VERBOSE, DEBUG, DEBUG1, DEBUG2, DEBUG3",
+        "use a log level from QUIET through DEBUG3",
+    ),
+    (
+        "SyslogFacility",
+        &[
+            "DAEMON", "USER", "AUTH", "AUTHPRIV", "LOCAL0", "LOCAL1", "LOCAL2", "LOCAL3", "LOCAL4",
+            "LOCAL5", "LOCAL6", "LOCAL7",
+        ],
+        "one of: DAEMON, USER, AUTH, AUTHPRIV, LOCAL0, LOCAL1, LOCAL2, LOCAL3, LOCAL4, LOCAL5, LOCAL6, LOCAL7",
+        "use DAEMON, USER, AUTH, AUTHPRIV, or LOCAL0 through LOCAL7",
+    ),
+    (
+        "PubkeyAuthentication",
+        &["true", "false", "yes", "no", "unbound", "host-bound"],
+        "one of: true, false, yes, no, unbound, host-bound",
+        "use yes, no, unbound, or host-bound; true and false are also accepted",
+    ),
+];
+
+#[test]
+fn enumerated_directives_accept_every_openssh_value() {
+    for (directive, values, _, _) in ENUM_CASES {
+        for value in *values {
+            for rendered in [
+                value.to_string(),
+                value.to_ascii_uppercase(),
+                format!("\"{value}\""),
+            ] {
+                let findings = invalid_value_findings(&format!("{directive} {rendered}"));
+                assert!(
+                    findings.is_empty(),
+                    "{directive} {rendered} should be accepted, got: {findings:?}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn enumerated_directives_reject_unknown_empty_and_extra_values() {
+    for (directive, _, expected, hint) in ENUM_CASES {
+        for value in ["bogus", "", "yes extra", "\"\"", "\"yes"] {
+            assert_invalid(directive, value, expected, hint);
+        }
+    }
+}
+
+#[test]
+fn enumerated_directives_reject_near_miss_spellings_and_out_of_range_names() {
+    let cases = [
+        ("AddressFamily", "ipv4"),
+        ("RequestTTY", "always"),
+        ("SessionType", "shell"),
+        ("ControlMaster", "auto-ask"),
+        ("CanonicalizeHostname", "auto"),
+        ("StrictHostKeyChecking", "accept_new"),
+        ("UpdateHostKeys", "confirm"),
+        ("VerifyHostKeyDNS", "secure"),
+        ("Tunnel", "pointtopoint"),
+        ("LogLevel", "DEBUG4"),
+        ("SyslogFacility", "LOCAL8"),
+        ("PubkeyAuthentication", "bound"),
+    ];
+
+    for (directive, value) in cases {
+        let (_, _, expected, hint) = ENUM_CASES
+            .iter()
+            .find(|(candidate, _, _, _)| *candidate == directive)
+            .expect("test case must have a value specification");
+        assert_invalid(directive, value, expected, hint);
+    }
+}
+
+#[test]
+fn modern_and_platform_specific_values_are_accepted_without_version_gating() {
+    for source in [
+        "StrictHostKeyChecking accept-new",
+        "PubkeyAuthentication unbound",
+        "PubkeyAuthentication host-bound",
+        "SyslogFacility AUTHPRIV",
+    ] {
+        assert!(
+            invalid_value_findings(source).is_empty(),
+            "sshconfig-lint should accept modern or platform-specific OpenSSH syntax: {source}"
+        );
+    }
+}
+
+#[test]
+fn enumerated_validation_covers_root_host_and_match_scopes() {
+    let findings = invalid_value_findings(
+        "\
+AddressFamily ipv4
+Host example.com
+  ControlMaster auto-ask
+Match host internal.example.com
+  PubkeyAuthentication bound
+",
+    );
+
+    assert_eq!(
+        findings
+            .iter()
+            .map(|finding| (finding.span.line, finding.message.as_str()))
+            .collect::<Vec<_>>(),
+        vec![
+            (
+                1,
+                "invalid value 'ipv4' for AddressFamily; expected one of: any, inet, inet6"
+            ),
+            (
+                3,
+                "invalid value 'auto-ask' for ControlMaster; expected one of: true, false, yes, no, auto, ask, autoask"
+            ),
+            (
+                5,
+                "invalid value 'bound' for PubkeyAuthentication; expected one of: true, false, yes, no, unbound, host-bound"
+            ),
+        ]
+    );
+}

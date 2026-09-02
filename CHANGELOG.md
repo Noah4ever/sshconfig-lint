@@ -11,12 +11,15 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 - Validate numeric values for `ConnectionAttempts`, `NumberOfPasswordPrompts`, `ServerAliveCountMax`, and `CanonicalizeMaxDots`
 - Validate OpenSSH duration syntax for `ConnectTimeout` and `ServerAliveInterval`
 - Validate complete octal `StreamLocalBindMask` values and one or two `IPQoS` arguments
+- Validate documented enumerated values for address selection, TTY and session behavior, connection sharing, hostname canonicalization, host-key handling, tunnels, logging, and public-key authentication
 
 ### Changed
 
 - Document the test-first checkpoint plan from v0.5 to v1.0
 - Prepare a macOS-friendly release workflow that does not publish checkpoint tags
 - Accept OpenSSH-compatible quoted numeric values and explicit positive signs
+- Keep modern and platform-specific valid OpenSSH enum values accepted without guessing the locally installed client version
+- Split built-in rule implementations into one file per rule while preserving the pre-v1 `rules::basic` exports
 
 ### Fixed
 

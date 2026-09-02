@@ -1,0 +1,12 @@
+---
+source: tests/integration.rs
+expression: output
+---
+line 1: [error] INVALID_VALUE (invalid-directive-value) invalid value 'ipv4' for AddressFamily; expected one of: any, inet, inet6 (hint: use any, inet, or inet6)
+line 2: [error] INVALID_VALUE (invalid-directive-value) invalid value 'always' for RequestTTY; expected one of: true, false, yes, no, force, auto (hint: use yes, no, force, or auto; true and false are also accepted)
+line 4: [error] INVALID_VALUE (invalid-directive-value) invalid value 'auto-ask' for ControlMaster; expected one of: true, false, yes, no, auto, ask, autoask (hint: use yes, no, auto, ask, or autoask; true and false are also accepted)
+line 5: [error] INVALID_VALUE (invalid-directive-value) invalid value 'accept_new' for StrictHostKeyChecking; expected one of: true, false, yes, no, ask, off, accept-new (hint: use yes, ask, accept-new, no, or off; true and false are also accepted)
+line 6: [error] INVALID_VALUE (invalid-directive-value) invalid value 'DEBUG4' for LogLevel; expected one of: QUIET, FATAL, ERROR, INFO, VERBOSE, DEBUG, DEBUG1, DEBUG2, DEBUG3 (hint: use a log level from QUIET through DEBUG3)
+line 8: [error] INVALID_VALUE (invalid-directive-value) invalid value 'pointtopoint' for Tunnel; expected one of: ethernet, point-to-point, true, false, yes, no (hint: use ethernet, point-to-point, yes, or no; true and false are also accepted)
+line 9: [error] INVALID_VALUE (invalid-directive-value) invalid value 'LOCAL8' for SyslogFacility; expected one of: DAEMON, USER, AUTH, AUTHPRIV, LOCAL0, LOCAL1, LOCAL2, LOCAL3, LOCAL4, LOCAL5, LOCAL6, LOCAL7 (hint: use DAEMON, USER, AUTH, AUTHPRIV, or LOCAL0 through LOCAL7)
+line 10: [error] INVALID_VALUE (invalid-directive-value) invalid value 'bound' for PubkeyAuthentication; expected one of: true, false, yes, no, unbound, host-bound (hint: use yes, no, unbound, or host-bound; true and false are also accepted)

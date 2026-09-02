@@ -150,7 +150,7 @@ JSON findings contain `severity`, `code`, `rule`, `line`, `file`, `message`, `hi
 
 The rule guides show the exact broken fragment, a corrected config, why it matters, and how to verify the result with OpenSSH.
 
-`INVALID_VALUE` currently checks ports, retry and prompt counters, alive settings, OpenSSH time values, `StreamLocalBindMask`, and `IPQoS`. Quoted values and syntax accepted by OpenSSH remain valid.
+`INVALID_VALUE` checks ports, retry and prompt counters, alive settings, OpenSSH time values, `StreamLocalBindMask`, `IPQoS`, and documented value sets such as `AddressFamily`, `ControlMaster`, `StrictHostKeyChecking`, `LogLevel`, and `PubkeyAuthentication`. Quoted and case-insensitive values accepted by OpenSSH remain valid. The linter accepts modern syntax without trying to infer the version of the SSH client that will consume the config.
 
 ## Development
 

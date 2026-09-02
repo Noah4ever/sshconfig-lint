@@ -156,6 +156,46 @@ Match host internal.example.com
 }
 
 #[test]
+fn snapshot_enumerated_values_text_output() {
+    let findings = lint_str(
+        "\
+AddressFamily ipv4
+RequestTTY always
+Host example.com
+  ControlMaster auto-ask
+  StrictHostKeyChecking accept_new
+  LogLevel DEBUG4
+Match host internal.example.com
+  Tunnel pointtopoint
+  SyslogFacility LOCAL8
+  PubkeyAuthentication bound
+",
+    );
+    let output = sshconfig_lint::report::emit_text(&findings, false);
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_enumerated_values_json_output() {
+    let findings = lint_str(
+        "\
+AddressFamily ipv4
+RequestTTY always
+Host example.com
+  ControlMaster auto-ask
+  StrictHostKeyChecking accept_new
+  LogLevel DEBUG4
+Match host internal.example.com
+  Tunnel pointtopoint
+  SyslogFacility LOCAL8
+  PubkeyAuthentication bound
+",
+    );
+    let output = sshconfig_lint::report::emit_json(&findings);
+    insta::assert_snapshot!(output);
+}
+
+#[test]
 fn fixture_multiple_patterns() {
     let path = Path::new("tests/fixtures/multiple_patterns.config");
     let findings = lint_file(path).expect("should read fixture");
