@@ -38,7 +38,7 @@ fn parse_directive(line: &str) -> LineKind {
         let value = line[eq_pos + 1..].trim();
         // Only treat as key=value if the key part has no spaces
         // (otherwise it's a regular "Key Value" where value contains '=')
-        if !key.contains(' ') {
+        if !key.chars().any(char::is_whitespace) {
             return LineKind::Directive {
                 key: key.to_string(),
                 value: value.to_string(),
@@ -65,23 +65,36 @@ fn parse_directive(line: &str) -> LineKind {
 
 /// Strip a trailing comment from a line, but not inside quotes.
 fn strip_inline_comment(line: &str) -> &str {
-    let mut in_quote = false;
+    let mut quote = None;
     let mut escape_next = false;
+    let mut at_token_start = true;
 
     for (i, ch) in line.char_indices() {
         if escape_next {
             escape_next = false;
+            at_token_start = false;
             continue;
         }
 
         match ch {
-            '\\' if in_quote => escape_next = true,
-            '"' => in_quote = !in_quote,
-            '#' if !in_quote => {
+            '\\' => {
+                escape_next = true;
+                at_token_start = false;
+            }
+            '\'' | '"' if quote.is_none() => {
+                quote = Some(ch);
+                at_token_start = false;
+            }
+            character if quote == Some(character) => {
+                quote = None;
+                at_token_start = false;
+            }
+            '#' if quote.is_none() && at_token_start => {
                 // Found a comment outside quotes
                 return line[..i].trim_end();
             }
-            _ => {}
+            ' ' | '\t' if quote.is_none() => at_token_start = true,
+            _ => at_token_start = false,
         }
     }
 
@@ -217,6 +230,54 @@ mod tests {
                 ref key,
                 ref value
             } if key == "IdentityFile" && value == "~/.ssh/id_ed25519"
+        ));
+    }
+
+    #[test]
+    fn hash_inside_an_unquoted_token_is_not_a_comment() {
+        let lines = lex("Host example#legacy");
+        assert!(matches!(
+            &lines[0].kind,
+            LineKind::Directive { key, value }
+                if key == "Host" && value == "example#legacy"
+        ));
+    }
+
+    #[test]
+    fn escaped_hash_and_quoted_hash_are_not_comments() {
+        for (input, expected) in [
+            (r#"Host example\#legacy"#, r#"example\#legacy"#),
+            (r#"Host "example # legacy""#, r#""example # legacy""#),
+            (r#"Host 'example # legacy'"#, r#"'example # legacy'"#),
+        ] {
+            let lines = lex(input);
+            assert!(matches!(
+                &lines[0].kind,
+                LineKind::Directive { key, value }
+                    if key == "Host" && value == expected
+            ));
+        }
+    }
+
+    #[test]
+    fn equals_in_a_tab_separated_value_does_not_become_part_of_the_key() {
+        let lines = lex("User\tname=build");
+        assert_eq!(
+            lines[0].kind,
+            LineKind::Directive {
+                key: "User".into(),
+                value: "name=build".into(),
+            }
+        );
+    }
+
+    #[test]
+    fn crlf_input_does_not_leak_carriage_returns() {
+        let lines = lex("Host example\r\n\tUser alice\r\n");
+        assert!(matches!(
+            &lines[1].kind,
+            LineKind::Directive { key, value }
+                if key == "User" && value == "alice"
         ));
     }
 

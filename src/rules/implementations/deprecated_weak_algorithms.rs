@@ -1,6 +1,8 @@
 use crate::model::{Config, Finding, Item, Severity, Span};
 use crate::rules::Rule;
 
+use super::value_arguments::parse_value_arguments;
+
 pub struct DeprecatedWeakAlgorithms;
 
 /// Directives whose values are comma-separated algorithm lists.
@@ -76,7 +78,13 @@ fn collect_weak_algorithm_findings(items: &[Item], findings: &mut Vec<Finding>) 
 }
 
 fn check_algorithms(key: &str, value: &str, span: &Span, findings: &mut Vec<Finding>) {
-    for algo in value.split(',') {
+    let Some(arguments) = parse_value_arguments(value) else {
+        return;
+    };
+    let [algorithms] = arguments.as_slice() else {
+        return;
+    };
+    for algo in algorithms.split(',') {
         let algo = algo.trim();
         if algo.is_empty() {
             continue;

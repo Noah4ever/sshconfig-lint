@@ -2,31 +2,7 @@ use crate::model::{Config, Item, Line, LineKind};
 
 /// Parse a space-separated list of patterns, respecting quoted values.
 fn parse_patterns(value: &str) -> Vec<String> {
-    let mut patterns = Vec::new();
-    let mut current = String::new();
-    let mut in_quote = false;
-
-    for ch in value.chars() {
-        match ch {
-            '"' => {
-                in_quote = !in_quote;
-                current.push(ch);
-            }
-            ' ' | '\t' if !in_quote => {
-                if !current.is_empty() {
-                    patterns.push(current.clone());
-                    current.clear();
-                }
-            }
-            _ => current.push(ch),
-        }
-    }
-
-    if !current.is_empty() {
-        patterns.push(current);
-    }
-
-    patterns
+    crate::arguments::split_arguments(value, true).unwrap_or_else(|| vec![value.to_string()])
 }
 
 /// Parse lexed lines into a structured Config AST.
@@ -322,5 +298,38 @@ mod tests {
             }
             other => panic!("expected Include, got {:?}", other),
         }
+    }
+
+    #[test]
+    fn patterns_follow_openssh_quote_and_escape_rules() {
+        let config = parse(lex(r#"Host "quoted host" 'single host' escaped\ host"#));
+        assert!(matches!(
+            &config.items[0],
+            Item::HostBlock { patterns, .. }
+                if patterns == &vec![
+                    "quoted host".to_string(),
+                    "single host".to_string(),
+                    "escaped host".to_string(),
+                ]
+        ));
+    }
+
+    #[test]
+    fn adjacent_quoted_and_unquoted_segments_form_one_pattern() {
+        let config = parse(lex(r#"Host prefix" middle"suffix"#));
+        assert!(matches!(
+            &config.items[0],
+            Item::HostBlock { patterns, .. }
+                if patterns == &vec!["prefix middlesuffix".to_string()]
+        ));
+    }
+
+    #[test]
+    fn empty_quoted_include_argument_is_preserved_for_validation() {
+        let config = parse(lex(r#"Include """#));
+        assert!(matches!(
+            &config.items[0],
+            Item::Include { patterns, .. } if patterns == &vec![String::new()]
+        ));
     }
 }

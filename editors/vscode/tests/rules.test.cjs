@@ -13,6 +13,7 @@ const publicRuleCodes = [
   'INSECURE_OPT',
   'UNSAFE_CTRL_PATH',
   'INCLUDE_CYCLE',
+  'INCLUDE_DEPTH',
   'INCLUDE_READ',
   'INCLUDE_GLOB',
   'INCLUDE_NO_MATCH',

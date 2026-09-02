@@ -37,8 +37,10 @@ fn line_end_utf16(source: &str, one_based_line: usize) -> u32 {
 }
 
 fn needs_filesystem_context(source: &str) -> bool {
-    source.lines().any(|line| {
-        let keyword = line.split_whitespace().next().unwrap_or_default();
+    crate::lexer::lex(source).into_iter().any(|line| {
+        let crate::model::LineKind::Directive { key: keyword, .. } = line.kind else {
+            return false;
+        };
         [
             "include",
             "identityfile",
@@ -333,6 +335,38 @@ mod tests {
                 Some(NumberOrString::String("EDITOR_FS_LIMIT".to_string()))
             );
         }
+    }
+
+    #[test]
+    fn equals_form_in_untitled_buffers_explains_the_editor_limit() {
+        for source in [
+            "Include=extra.conf\n",
+            "IdentityFile=/missing/key\n",
+            "CertificateFile=/missing/cert\n",
+            "RevokedHostKeys=/missing/revoked\n",
+        ] {
+            let uri = Url::parse("untitled:ssh-config").unwrap();
+            let diagnostics = diagnostics(source, &uri);
+            assert!(
+                diagnostics.iter().any(|diagnostic| {
+                    diagnostic.code == Some(NumberOrString::String("EDITOR_FS_LIMIT".to_string()))
+                }),
+                "{source}: {diagnostics:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn diagnostic_end_columns_use_utf16_code_units() {
+        let source = "Host 😀\nHost 😀\n";
+        let uri = Url::parse("untitled:ssh-config").unwrap();
+        let duplicate = diagnostics(source, &uri)
+            .into_iter()
+            .find(|diagnostic| {
+                diagnostic.code == Some(NumberOrString::String("DUP_HOST".to_string()))
+            })
+            .unwrap();
+        assert_eq!(duplicate.range.end.character, 7);
     }
 
     #[test]

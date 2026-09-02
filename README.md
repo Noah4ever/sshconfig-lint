@@ -161,6 +161,7 @@ JSON findings contain `severity`, `code`, `rule`, `line`, `file`, `message`, `hi
 | `INSECURE_OPT` | [Insecure option](https://sshconfig-lint.apps.thiering.org/en/rules/insecure-option) | warning |
 | `UNSAFE_CTRL_PATH` | [Unsafe ControlPath](https://sshconfig-lint.apps.thiering.org/en/rules/unsafe-control-path) | warning |
 | `INCLUDE_CYCLE` | [Include cycle](https://sshconfig-lint.apps.thiering.org/en/rules/include-cycle) | error |
+| `INCLUDE_DEPTH` | [Include nesting too deep](https://sshconfig-lint.apps.thiering.org/en/rules/include-depth) | error |
 | `INCLUDE_READ` | [Include cannot be read](https://sshconfig-lint.apps.thiering.org/en/rules/include-read) | error |
 | `INCLUDE_GLOB` | [Invalid Include pattern](https://sshconfig-lint.apps.thiering.org/en/rules/include-glob) | error |
 | `INCLUDE_NO_MATCH` | [Include matches no files](https://sshconfig-lint.apps.thiering.org/en/rules/include-no-match) | info |
@@ -187,7 +188,8 @@ cargo clippy --all-targets --all-features -- -D warnings
 cargo fmt -- --check
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md), the public [roadmap](ROADMAP.md), and [security policy](SECURITY.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md), the public [roadmap](ROADMAP.md), the
+[v1 stability contract](STABILITY.md), and [security policy](SECURITY.md).
 
 ## License
 

@@ -93,7 +93,16 @@ fn sarif_level(severity: Severity) -> &'static str {
 }
 
 fn artifact_uri(file: &str) -> String {
-    file.replace('\\', "/").replace(' ', "%20")
+    let normalized = file.replace('\\', "/");
+    let mut encoded = String::with_capacity(normalized.len());
+    for byte in normalized.bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'.' | b'_' | b'~' | b'/' | b':') {
+            encoded.push(byte as char);
+        } else {
+            encoded.push_str(&format!("%{byte:02X}"));
+        }
+    }
+    encoded
 }
 
 /// Emit SARIF 2.1.0 for GitHub Code Scanning and compatible tools.
@@ -244,6 +253,23 @@ mod tests {
         assert!(output.contains("\"version\": \"2.1.0\""));
         assert!(output.contains("DUP_HOST"));
         assert!(output.contains("configs/ssh%20config"));
+    }
+
+    #[test]
+    fn sarif_percent_encodes_uri_fragment_query_percent_and_unicode_characters() {
+        let finding = Finding::new(
+            Severity::Error,
+            "test",
+            "TEST",
+            "bad",
+            Span::with_file(1, "configs/ä #key?.conf"),
+        );
+        let output: Value = serde_json::from_str(&emit_sarif(&[finding])).unwrap();
+        assert_eq!(
+            output["runs"][0]["results"][0]["locations"][0]["physicalLocation"]["artifactLocation"]
+                ["uri"],
+            "configs/%C3%A4%20%23key%3F.conf"
+        );
     }
 
     #[test]

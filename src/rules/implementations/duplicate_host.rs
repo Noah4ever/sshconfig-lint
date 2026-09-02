@@ -18,7 +18,8 @@ impl Rule for DuplicateHost {
         for item in &config.items {
             if let Item::HostBlock { patterns, span, .. } = item {
                 for pattern in patterns {
-                    if let Some(first_span) = seen.get(pattern) {
+                    let normalized = pattern.to_ascii_lowercase();
+                    if let Some(first_span) = seen.get(&normalized) {
                         findings.push(
                             Finding::new(
                                 Severity::Warning,
@@ -33,7 +34,7 @@ impl Rule for DuplicateHost {
                             .with_hint("remove one of the duplicate Host blocks"),
                         );
                     } else {
-                        seen.insert(pattern.clone(), span.clone());
+                        seen.insert(normalized, span.clone());
                     }
                 }
             }

@@ -1,6 +1,8 @@
 use crate::model::{Config, Finding, Item, Severity};
 use crate::rules::Rule;
 
+use super::value_arguments::parse_value_arguments;
+
 /// Warns about directives that weaken SSH security.
 ///
 /// Catches dangerous settings like StrictHostKeyChecking no (disables MITM
@@ -90,11 +92,20 @@ fn check_insecure_directives(items: &[Item], is_global: bool, findings: &mut Vec
     for item in items {
         if let Item::Directive { key, value, span } = item {
             let key_lower = key.to_ascii_lowercase();
-            let val_lower = value.to_ascii_lowercase();
+            let Some(arguments) = parse_value_arguments(value) else {
+                continue;
+            };
 
             // Always-bad settings
             for &(directive, bad_val, severity, desc, hint) in INSECURE_SETTINGS {
-                if key_lower == directive && val_lower == bad_val {
+                let has_bad_value = if directive == "userknownhostsfile" {
+                    arguments
+                        .iter()
+                        .any(|argument| argument.eq_ignore_ascii_case(bad_val))
+                } else {
+                    matches!(arguments.as_slice(), [argument] if argument.eq_ignore_ascii_case(bad_val))
+                };
+                if key_lower == directive && has_bad_value {
                     findings.push(
                         Finding::new(
                             severity,
@@ -111,7 +122,9 @@ fn check_insecure_directives(items: &[Item], is_global: bool, findings: &mut Vec
             // Risky-on-wildcard settings
             if is_global {
                 for &(directive, bad_val, desc) in RISKY_ON_WILDCARD {
-                    if key_lower == directive && val_lower == bad_val {
+                    if key_lower == directive
+                        && matches!(arguments.as_slice(), [argument] if argument.eq_ignore_ascii_case(bad_val))
+                    {
                         findings.push(
                             Finding::new(
                                 Severity::Warning,

@@ -1,3 +1,4 @@
+mod arguments;
 pub mod lexer;
 pub mod lsp;
 pub mod model;

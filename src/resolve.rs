@@ -5,17 +5,20 @@ use crate::lexer;
 use crate::model::{Config, Finding, Item, Severity, Span};
 use crate::parser;
 
+const MAX_INCLUDE_DEPTH: usize = 16;
+
 /// Resolve all Include directives in-place, returning any findings (missing files, cycles, etc).
 pub fn resolve_includes(config: &mut Config, base_dir: &Path) -> Vec<Finding> {
     let mut visited = HashSet::new();
     let mut findings = Vec::new();
-    config.items = resolve_items(&config.items, base_dir, &mut visited, &mut findings);
+    config.items = resolve_items(&config.items, base_dir, 0, &mut visited, &mut findings);
     findings
 }
 
 fn resolve_items(
     items: &[Item],
     base_dir: &Path,
+    depth: usize,
     visited: &mut HashSet<PathBuf>,
     findings: &mut Vec<Finding>,
 ) -> Vec<Item> {
@@ -26,7 +29,8 @@ fn resolve_items(
             Item::Include { patterns, span } => {
                 // Expand each include pattern separately
                 for pattern in patterns {
-                    let expanded = expand_include(pattern, base_dir, span, visited, findings);
+                    let expanded =
+                        expand_include(pattern, base_dir, depth, span, visited, findings);
                     result.extend(expanded);
                 }
             }
@@ -35,7 +39,7 @@ fn resolve_items(
                 span,
                 items: block_items,
             } => {
-                let resolved_items = resolve_items(block_items, base_dir, visited, findings);
+                let resolved_items = resolve_items(block_items, base_dir, depth, visited, findings);
                 result.push(Item::HostBlock {
                     patterns: patterns.clone(),
                     span: span.clone(),
@@ -47,7 +51,7 @@ fn resolve_items(
                 span,
                 items: block_items,
             } => {
-                let resolved_items = resolve_items(block_items, base_dir, visited, findings);
+                let resolved_items = resolve_items(block_items, base_dir, depth, visited, findings);
                 result.push(Item::MatchBlock {
                     criteria: criteria.clone(),
                     span: span.clone(),
@@ -64,13 +68,36 @@ fn resolve_items(
 fn expand_include(
     pattern: &str,
     base_dir: &Path,
+    depth: usize,
     span: &Span,
     visited: &mut HashSet<PathBuf>,
     findings: &mut Vec<Finding>,
 ) -> Vec<Item> {
-    let resolved_pattern = if pattern.starts_with('~') {
+    if depth >= MAX_INCLUDE_DEPTH {
+        findings.push(
+            Finding::new(
+                Severity::Error,
+                "include-depth",
+                "INCLUDE_DEPTH",
+                format!(
+                    "Include nesting exceeds OpenSSH's maximum depth of {MAX_INCLUDE_DEPTH}: {pattern}"
+                ),
+                span.clone(),
+            )
+            .with_hint("flatten the Include chain to at most 16 nested files"),
+        );
+        return Vec::new();
+    }
+
+    let resolved_pattern = if pattern == "~" {
         if let Some(home) = dirs::home_dir() {
-            home.join(&pattern[2..]).to_string_lossy().to_string()
+            home.to_string_lossy().to_string()
+        } else {
+            pattern.to_string()
+        }
+    } else if let Some(rest) = pattern.strip_prefix("~/") {
+        if let Some(home) = dirs::home_dir() {
+            home.join(rest).to_string_lossy().to_string()
         } else {
             pattern.to_string()
         }
@@ -147,7 +174,8 @@ fn expand_include(
                 crate::assign_file_to_config(&mut sub_config, &canonical);
                 // Resolve includes within the included file.
                 let sub_dir = canonical.parent().unwrap_or(base_dir);
-                let sub_items = resolve_items(&sub_config.items, sub_dir, visited, findings);
+                let sub_items =
+                    resolve_items(&sub_config.items, sub_dir, depth + 1, visited, findings);
                 sub_config.items = sub_items;
                 result.extend(sub_config.items);
             }
@@ -268,6 +296,98 @@ mod tests {
                 .iter()
                 .filter(|f| f.rule == "include-no-match")
                 .all(|f| f.severity == crate::model::Severity::Info)
+        );
+    }
+
+    #[test]
+    fn bare_tilde_include_never_panics() {
+        let result = std::panic::catch_unwind(|| {
+            let lines = lexer::lex("Include ~");
+            let mut config = parser::parse(lines);
+            resolve_includes(&mut config, Path::new("."))
+        });
+        assert!(result.is_ok(), "Include ~ must not panic");
+    }
+
+    #[test]
+    fn quoted_include_path_with_spaces_resolves() {
+        let tmp = TempDir::new().unwrap();
+        let included = tmp.path().join("extra config");
+        fs::write(&included, "User alice\n").unwrap();
+        let input = format!(r#"Include "{}""#, included.display());
+        let mut config = parser::parse(lexer::lex(&input));
+
+        let findings = resolve_includes(&mut config, tmp.path());
+
+        assert!(
+            findings
+                .iter()
+                .all(|finding| finding.severity != Severity::Error)
+        );
+        assert!(matches!(
+            &config.items[0],
+            Item::Directive { key, value, .. } if key == "User" && value == "alice"
+        ));
+    }
+
+    #[test]
+    fn escaped_space_in_include_path_resolves() {
+        let tmp = TempDir::new().unwrap();
+        let included = tmp.path().join("extra config");
+        fs::write(&included, "User alice\n").unwrap();
+        let escaped = included.to_string_lossy().replace(' ', r#"\ "#);
+        let mut config = parser::parse(lexer::lex(&format!("Include {escaped}")));
+
+        let findings = resolve_includes(&mut config, tmp.path());
+
+        assert!(
+            findings
+                .iter()
+                .all(|finding| finding.severity != Severity::Error)
+        );
+        assert!(matches!(&config.items[0], Item::Directive { key, .. } if key == "User"));
+    }
+
+    #[test]
+    fn direct_self_include_is_bounded_and_reported() {
+        let tmp = TempDir::new().unwrap();
+        let root = tmp.path().join("config");
+        fs::write(&root, format!("Include {}\n", root.display())).unwrap();
+        let findings = crate::lint_file(&root).unwrap();
+        assert_eq!(
+            findings
+                .iter()
+                .filter(|finding| finding.code == "INCLUDE_CYCLE")
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn acyclic_include_depth_is_bounded_like_openssh() {
+        let tmp = TempDir::new().unwrap();
+        for index in 0..18 {
+            let content = if index == 17 {
+                "User alice\n".to_string()
+            } else {
+                format!(
+                    "Include {}\n",
+                    tmp.path()
+                        .join(format!("{next}.conf", next = index + 1))
+                        .display()
+                )
+            };
+            fs::write(tmp.path().join(format!("{index}.conf")), content).unwrap();
+        }
+
+        let findings = crate::lint_file(&tmp.path().join("0.conf")).unwrap();
+        assert_eq!(
+            findings
+                .iter()
+                .filter(|finding| finding.code == "INCLUDE_DEPTH")
+                .count(),
+            1,
+            "{findings:?}"
         );
     }
 }

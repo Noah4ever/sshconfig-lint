@@ -11,6 +11,7 @@ const RULE_GUIDES: &[(&str, &str)] = &[
     ("INSECURE_OPT", "insecure-option"),
     ("UNSAFE_CTRL_PATH", "unsafe-control-path"),
     ("INCLUDE_CYCLE", "include-cycle"),
+    ("INCLUDE_DEPTH", "include-depth"),
     ("INCLUDE_READ", "include-read"),
     ("INCLUDE_GLOB", "include-glob"),
     ("INCLUDE_NO_MATCH", "include-no-match"),

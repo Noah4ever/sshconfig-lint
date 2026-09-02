@@ -1,7 +1,8 @@
-use std::path::Path;
-
 use crate::model::{Config, Finding, Item, Severity, Span};
 use crate::rules::Rule;
+
+use super::explicit_path::{is_readable_regular_file, resolve_explicit_path};
+use super::value_arguments::parse_value_arguments;
 
 /// Errors when an IdentityFile points to a file that doesn't exist.
 /// Skips paths containing `%` or `${` (template variables).
@@ -36,29 +37,29 @@ fn collect_identity_findings(items: &[Item], findings: &mut Vec<Finding>) {
 }
 
 fn check_identity_file(value: &str, span: &Span, findings: &mut Vec<Finding>) {
-    // OpenSSH uses "none" to explicitly disable identity files. Template
-    // variables cannot be resolved reliably without a concrete connection.
-    if value.eq_ignore_ascii_case("none") || value.contains('%') || value.contains("${") {
+    let Some(arguments) = parse_value_arguments(value) else {
         return;
-    }
-
-    let expanded = if let Some(rest) = value.strip_prefix("~/") {
-        if let Some(home) = dirs::home_dir() {
-            home.join(rest)
-        } else {
-            return; // Can't resolve ~ without home dir
-        }
-    } else {
-        Path::new(value).to_path_buf()
+    };
+    let [argument] = arguments.as_slice() else {
+        return;
     };
 
-    if !expanded.exists() {
+    // OpenSSH uses "none" to explicitly disable identity files. Template
+    // variables cannot be resolved reliably without a concrete connection.
+    if argument.eq_ignore_ascii_case("none") {
+        return;
+    }
+    let Some(expanded) = resolve_explicit_path(argument) else {
+        return;
+    };
+
+    if !is_readable_regular_file(&expanded) {
         findings.push(
             Finding::new(
                 Severity::Error,
                 "identity-file-exists",
                 "MISSING_IDENTITY",
-                format!("IdentityFile not found: {}", value),
+                format!("IdentityFile not found or unreadable: {}", argument),
                 span.clone(),
             )
             .with_hint("check the path or remove the directive"),

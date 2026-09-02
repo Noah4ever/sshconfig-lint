@@ -102,6 +102,103 @@ fn identity_file_skips_templates() {
 }
 
 #[test]
+fn identity_file_accepts_quoted_and_escaped_paths_with_spaces() {
+    let tmp = TempDir::new().unwrap();
+    let key_path = tmp.path().join("key with spaces");
+    fs::write(&key_path, "fake key").unwrap();
+
+    for value in [
+        format!(r#""{}""#, key_path.display()),
+        key_path.to_string_lossy().replace(' ', r#"\ "#),
+    ] {
+        let config = Config {
+            items: vec![Item::Directive {
+                key: "IdentityFile".into(),
+                value,
+                span: Span::new(1),
+            }],
+        };
+        assert!(IdentityFileExists.check(&config).is_empty());
+    }
+}
+
+#[test]
+fn identity_file_rejects_a_directory_and_skips_malformed_argument_lists() {
+    let tmp = TempDir::new().unwrap();
+    let directory_config = Config {
+        items: vec![Item::Directive {
+            key: "IdentityFile".into(),
+            value: tmp.path().to_string_lossy().into_owned(),
+            span: Span::new(1),
+        }],
+    };
+    assert_eq!(IdentityFileExists.check(&directory_config).len(), 1);
+
+    for value in [r#""unterminated"#, "one two"] {
+        let malformed = Config {
+            items: vec![Item::Directive {
+                key: "IdentityFile".into(),
+                value: value.into(),
+                span: Span::new(1),
+            }],
+        };
+        assert!(IdentityFileExists.check(&malformed).is_empty());
+    }
+}
+
+#[test]
+fn duplicate_hosts_are_case_insensitive_like_openssh_matching() {
+    let config = Config {
+        items: vec![
+            Item::HostBlock {
+                patterns: vec!["Example.COM".into()],
+                span: Span::new(1),
+                items: vec![],
+            },
+            Item::HostBlock {
+                patterns: vec!["example.com".into()],
+                span: Span::new(2),
+                items: vec![],
+            },
+        ],
+    };
+    assert_eq!(DuplicateHost.check(&config).len(), 1);
+}
+
+#[test]
+fn quoted_insecure_values_are_still_detected() {
+    let config = Config {
+        items: vec![
+            Item::Directive {
+                key: "StrictHostKeyChecking".into(),
+                value: r#""no""#.into(),
+                span: Span::new(1),
+            },
+            Item::Directive {
+                key: "UserKnownHostsFile".into(),
+                value: r#""/dev/null" ~/.ssh/known_hosts"#.into(),
+                span: Span::new(2),
+            },
+        ],
+    };
+    assert_eq!(InsecureOption.check(&config).len(), 2);
+}
+
+#[test]
+fn quoted_weak_algorithm_lists_are_still_detected() {
+    let config = Config {
+        items: vec![Item::Directive {
+            key: "Ciphers".into(),
+            value: r#""aes256-ctr,3des-cbc""#.into(),
+            span: Span::new(1),
+        }],
+    };
+    let findings = DeprecatedWeakAlgorithms.check(&config);
+    assert_eq!(findings.len(), 1);
+    assert!(findings[0].message.contains("3des-cbc"));
+}
+
+#[test]
 fn wildcard_after_specific_no_warning() {
     let config = Config {
         items: vec![

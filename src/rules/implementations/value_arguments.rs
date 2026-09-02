@@ -1,45 +1,40 @@
 pub(super) fn parse_value_arguments(value: &str) -> Option<Vec<String>> {
-    let mut arguments = Vec::new();
-    let mut current = String::new();
-    let mut quoted = false;
-    let mut escaped = false;
-    let mut started = false;
+    crate::arguments::split_arguments(value, false)
+}
 
-    for character in value.chars() {
-        if escaped {
-            current.push(character);
-            escaped = false;
-            started = true;
-            continue;
-        }
+#[cfg(test)]
+mod tests {
+    use super::parse_value_arguments;
 
-        match character {
-            '\\' if quoted => {
-                escaped = true;
-                started = true;
-            }
-            '"' => {
-                quoted = !quoted;
-                started = true;
-            }
-            character if character.is_whitespace() && !quoted => {
-                if started {
-                    arguments.push(std::mem::take(&mut current));
-                    started = false;
-                }
-            }
-            _ => {
-                current.push(character);
-                started = true;
-            }
+    #[test]
+    fn matches_openssh_argument_splitting_examples() {
+        let cases = [
+            ("", vec![]),
+            ("    ", vec![]),
+            ("smiley leamas", vec!["smiley", "leamas"]),
+            (r#"leamas " smiley ""#, vec!["leamas", " smiley "]),
+            (r#"smiley" leamas" liz"#, vec!["smiley leamas", "liz"]),
+            (r#"\"smiley\'"#, vec![r#""smiley'"#]),
+            (r#"smiley\'s leamas\'"#, vec!["smiley's", "leamas'"]),
+            (r#"leamas\\smiley"#, vec![r#"leamas\smiley"#]),
+            (r#"smiley\ leamas"#, vec!["smiley leamas"]),
+            (r#"'smiley\ leamas'"#, vec![r#"smiley\ leamas"#]),
+        ];
+
+        for (input, expected) in cases {
+            assert_eq!(
+                parse_value_arguments(input),
+                Some(expected.into_iter().map(str::to_string).collect()),
+                "{input:?}"
+            );
         }
     }
 
-    if quoted || escaped {
-        return None;
+    #[test]
+    fn preserves_empty_quoted_arguments_and_rejects_unbalanced_quotes() {
+        assert_eq!(parse_value_arguments(r#""""#), Some(vec![String::new()]));
+        assert_eq!(parse_value_arguments("''"), Some(vec![String::new()]));
+        assert_eq!(parse_value_arguments(r#""unterminated"#), None);
+        assert_eq!(parse_value_arguments("'unterminated"), None);
     }
-    if started {
-        arguments.push(current);
-    }
-    Some(arguments)
 }

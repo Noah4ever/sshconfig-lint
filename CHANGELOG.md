@@ -23,6 +23,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 - Exercise both official Pre-Commit hooks against clean, warning, and error fixtures
 - Run the repository Action itself on Linux, macOS, and Windows in CI
 - Test verified VS Code binary downloads, checksum rejection, custom paths, and offline reuse
+- Bound Include expansion to OpenSSH's maximum nesting depth of 16
+- Add OpenSSH differential fixtures and adversarial no-panic coverage
 
 ### Changed
 
@@ -33,11 +35,19 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 - Split built-in rule implementations into one file per rule while preserving the pre-v1 `rules::basic` exports
 - Explain all filesystem-dependent checks in unsaved editor buffers
 - Keep the VS Code rule-guide picker synchronized with every public diagnostic
+- Match OpenSSH argument splitting for single and double quotes, adjacent quoted segments, and supported backslash escapes
+- Treat Host patterns case-insensitively when finding duplicates
 
 ### Fixed
 
 - Accept OpenSSH's `IdentityFile none` sentinel instead of reporting it as a missing file
 - Do not print `No issues found` when every requested config file is missing or unreadable
+- Avoid a panic for the valid bare-tilde form `Include ~`
+- Preserve hashes inside OpenSSH tokens instead of treating every unquoted hash as a comment
+- Resolve quoted and escaped IdentityFile and Include paths containing spaces
+- Detect insecure values and weak algorithm lists when their arguments are quoted
+- Percent-encode reserved and non-ASCII characters in SARIF artifact URIs
+- Recognize filesystem-dependent `Key=Value` directives in untitled LSP buffers
 
 ## [0.5.0] - 2026-08-24
 
