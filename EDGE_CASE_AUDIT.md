@@ -26,10 +26,12 @@ Primary references:
 - Unicode content and UTF-16 LSP range calculation
 - malformed and unbalanced quotes without panics
 
-`tests/edge_case_audit.rs` compares stable accepted and rejected values against
-the installed OpenSSH client when it is available. The test skips only the
-OpenSSH half when no `ssh` executable is installed; the linter assertions still
-run.
+`tests/edge_case_audit.rs` compares version-stable accepted and rejected values
+against the installed OpenSSH client when it is available. The test skips only
+the OpenSSH half when no `ssh` executable is installed; the linter assertions
+still run. Current-upstream syntax that older clients reject, such as fractional
+seconds, is tested against the linter separately and traced to the upstream
+parser tests.
 
 ## Covered filesystem and Include cases
 

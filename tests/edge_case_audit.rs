@@ -18,13 +18,11 @@ fn openssh_accepts(config: &str) -> Option<bool> {
 }
 
 #[test]
-fn documented_openssh_syntax_does_not_create_invalid_value_findings() {
+fn version_stable_openssh_syntax_is_accepted_by_openssh_and_the_linter() {
     let accepted = [
         "Port +22\n",
         "Port 00022\n",
         "ConnectTimeout 1m30\n",
-        "ConnectTimeout 1.5s\n",
-        "ConnectTimeout .5s\n",
         "StreamLocalBindMask +0777\n",
         "IPQoS +1 255\n",
         "Host \"quoted host\"\n  User alice\n",
@@ -43,6 +41,22 @@ fn documented_openssh_syntax_does_not_create_invalid_value_findings() {
                 .iter()
                 .all(|finding| finding.code != "INVALID_VALUE"),
             "sshconfig-lint rejected OpenSSH syntax {config:?}: {findings:?}"
+        );
+    }
+}
+
+#[test]
+fn current_upstream_fractional_seconds_do_not_create_invalid_value_findings() {
+    // Fractional seconds are supported by current OpenSSH through
+    // convtime_double(), but older clients installed on CI runners reject
+    // them. Keep these cases independent of the installed ssh version.
+    for config in ["ConnectTimeout 1.5s\n", "ConnectTimeout .5s\n"] {
+        let findings = lint_str_portable(config);
+        assert!(
+            findings
+                .iter()
+                .all(|finding| finding.code != "INVALID_VALUE"),
+            "sshconfig-lint rejected current OpenSSH syntax {config:?}: {findings:?}"
         );
     }
 }
