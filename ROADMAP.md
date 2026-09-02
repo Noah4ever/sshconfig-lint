@@ -122,15 +122,22 @@ become available after saving.
 
 Suggested tag: `checkpoint/06-integrations`
 
-- [ ] Add a tested Neovim LSP example
-- [ ] Run the official pre-commit hooks in a fixture repository
-- [ ] Run the GitHub Action smoke test on Linux, macOS, and Windows
-- [ ] Test VS Code binary download, checksum failure, custom binary path, and
+- [x] Add a tested Neovim LSP example
+- [x] Run the official pre-commit hooks in a fixture repository
+- [x] Run the GitHub Action smoke test on Linux, macOS, and Windows
+- [x] Test VS Code binary download, checksum failure, custom binary path, and
       offline reuse
-- [ ] Add or update one rule guide for every public diagnostic
-- [ ] Keep README, playground, Action examples, and extension documentation in
+- [x] Add or update one rule guide for every public diagnostic
+- [x] Keep README, playground, Action examples, and extension documentation in
       sync
-- [ ] Publish the GitHub Action in GitHub Marketplace
+- [x] Publish the GitHub Action in GitHub Marketplace
+
+The Action smoke workflow exercises the repository's current composite Action
+with the published version-matched binary on Linux, macOS, and Windows. The
+documentation contract keeps all 18 public rule codes aligned across the core
+README, VS Code picker, and the playground when both repositories are checked
+out next to each other. The public Marketplace listing was verified on
+September 2, 2026.
 
 ## Checkpoint 07: v1.0 release candidate
 
@@ -158,7 +165,7 @@ crates.io, AUR, Homebrew, and the VS Code extension together. See
 
 After publication:
 
-- publish the GitHub Action in Marketplace
+- verify that the GitHub Marketplace listing offers v1.0
 - submit the working playground to Show HN
 - submit the tool to Console.dev and impl.rs
 - use a suitable open issue for a This Week in Rust call for participation
