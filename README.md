@@ -147,10 +147,18 @@ JSON findings contain `severity`, `code`, `rule`, `line`, `file`, `message`, `hi
 | `INCLUDE_READ` | [Include cannot be read](https://sshconfig-lint.apps.thiering.org/en/rules/include-read) | error |
 | `INCLUDE_GLOB` | [Invalid Include pattern](https://sshconfig-lint.apps.thiering.org/en/rules/include-glob) | error |
 | `INCLUDE_NO_MATCH` | [Include matches no files](https://sshconfig-lint.apps.thiering.org/en/rules/include-no-match) | info |
+| `NEGATED_HOST` | [Host has only negated patterns](https://sshconfig-lint.apps.thiering.org/en/rules/negated-only-host) | warning |
+| `PROXY_CONFLICT` | [ProxyCommand and ProxyJump conflict](https://sshconfig-lint.apps.thiering.org/en/rules/proxy-command-jump-conflict) | warning |
+| `REVOKED_HOST_KEYS_UNREADABLE` | [RevokedHostKeys file is unreadable](https://sshconfig-lint.apps.thiering.org/en/rules/revoked-host-keys-readable) | error |
+| `MISSING_CERTIFICATE` | [CertificateFile not found](https://sshconfig-lint.apps.thiering.org/en/rules/certificate-file-exists) | error |
+| `LOCAL_COMMAND_DISABLED` | [LocalCommand is not enabled](https://sshconfig-lint.apps.thiering.org/en/rules/local-command-enabled) | warning |
+| `INVALID_TOKEN` | [Invalid percent token](https://sshconfig-lint.apps.thiering.org/en/rules/invalid-percent-token) | error |
 
 The rule guides show the exact broken fragment, a corrected config, why it matters, and how to verify the result with OpenSSH.
 
 `INVALID_VALUE` checks ports, retry and prompt counters, alive settings, OpenSSH time values, `StreamLocalBindMask`, `IPQoS`, and documented value sets such as `AddressFamily`, `ControlMaster`, `StrictHostKeyChecking`, `LogLevel`, and `PubkeyAuthentication`. Quoted and case-insensitive values accepted by OpenSSH remain valid. The linter accepts modern syntax without trying to infer the version of the SSH client that will consume the config.
+
+Filesystem checks skip paths containing percent tokens or environment variables because their final value depends on the connection context. `LOCAL_COMMAND_DISABLED` is similarly conservative: it is suppressed when an unresolved `Include` or any possible `PermitLocalCommand yes` could make the command effective. Resolve Includes through the normal CLI or a saved editor document for the most precise result.
 
 ## Development
 

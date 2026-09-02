@@ -1,4 +1,4 @@
-use sshconfig_lint::{lint_file, lint_str};
+use sshconfig_lint::{lint_file, lint_str, lint_str_portable};
 use std::path::Path;
 
 #[test]
@@ -189,6 +189,38 @@ Match host internal.example.com
   Tunnel pointtopoint
   SyslogFacility LOCAL8
   PubkeyAuthentication bound
+",
+    );
+    let output = sshconfig_lint::report::emit_json(&findings);
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_semantic_traps_text_output() {
+    let findings = lint_str_portable(
+        "\
+Host !internal
+  User deploy
+Host production
+  ProxyCommand ssh jump -W %h:%p
+  ProxyJump bastion
+  LocalCommand echo %Z
+",
+    );
+    let output = sshconfig_lint::report::emit_text(&findings, false);
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_semantic_traps_json_output() {
+    let findings = lint_str_portable(
+        "\
+Host !internal
+  User deploy
+Host production
+  ProxyCommand ssh jump -W %h:%p
+  ProxyJump bastion
+  LocalCommand echo %Z
 ",
     );
     let output = sshconfig_lint::report::emit_json(&findings);

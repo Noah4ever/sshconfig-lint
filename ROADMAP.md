@@ -81,18 +81,25 @@ across mixed OpenSSH versions.
 
 Suggested tag: `checkpoint/04-semantic-traps`
 
-- [ ] Warn when a `Host` block contains only negated patterns and can never
+- [x] Warn when a `Host` block contains only negated patterns and can never
       match positively
-- [ ] Diagnose `ProxyCommand` and `ProxyJump` in the same scope because only
+- [x] Diagnose `ProxyCommand` and `ProxyJump` in the same scope because only
       the first obtained value takes effect
-- [ ] Diagnose a missing or unreadable `RevokedHostKeys` file
-- [ ] Check explicit `CertificateFile` paths while respecting tokens,
+- [x] Diagnose a missing or unreadable `RevokedHostKeys` file
+- [x] Check explicit `CertificateFile` paths while respecting tokens,
       environment variables, and the `none` sentinel where supported
-- [ ] Report `LocalCommand` as ineffective when `PermitLocalCommand` is not
+- [x] Report `LocalCommand` as ineffective when `PermitLocalCommand` is not
       enabled in the effective scope
-- [ ] Validate percent tokens only for directives with stable token contracts
-- [ ] Defer forwarding syntax until IPv6, Unix sockets, wildcard ports, and
+- [x] Validate percent tokens only for directives with stable token contracts
+- [x] Defer forwarding syntax until IPv6, Unix sockets, wildcard ports, and
       remote port zero can be handled without false positives
+
+Explicit filesystem paths are checked only when they can be resolved without
+connection context. Paths containing percent tokens, environment variables,
+or a named-user tilde remain untouched. `CertificateFile none` is treated as a
+literal path because OpenSSH does not define a `none` sentinel for that
+directive. LocalCommand diagnostics are suppressed when an unresolved
+`Include` or any possible enabling scope prevents a certain conclusion.
 
 ## Checkpoint 05: output and LSP contracts
 

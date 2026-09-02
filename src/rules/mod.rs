@@ -22,6 +22,12 @@ pub fn run_all(config: &Config) -> Vec<Finding> {
         Box::new(implementations::DuplicateDirectives),
         Box::new(implementations::InsecureOption),
         Box::new(implementations::UnsafeControlPath),
+        Box::new(implementations::NegatedOnlyHost),
+        Box::new(implementations::ProxyCommandJumpConflict),
+        Box::new(implementations::RevokedHostKeysReadable),
+        Box::new(implementations::CertificateFileExists),
+        Box::new(implementations::LocalCommandEnabled),
+        Box::new(implementations::InvalidPercentToken),
     ];
 
     let mut findings = Vec::new();
@@ -44,6 +50,10 @@ pub fn run_portable(config: &Config) -> Vec<Finding> {
         Box::new(implementations::DuplicateDirectives),
         Box::new(implementations::InsecureOption),
         Box::new(implementations::UnsafeControlPath),
+        Box::new(implementations::NegatedOnlyHost),
+        Box::new(implementations::ProxyCommandJumpConflict),
+        Box::new(implementations::LocalCommandEnabled),
+        Box::new(implementations::InvalidPercentToken),
     ];
 
     let mut findings = Vec::new();

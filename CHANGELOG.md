@@ -12,6 +12,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 - Validate OpenSSH duration syntax for `ConnectTimeout` and `ServerAliveInterval`
 - Validate complete octal `StreamLocalBindMask` values and one or two `IPQoS` arguments
 - Validate documented enumerated values for address selection, TTY and session behavior, connection sharing, hostname canonicalization, host-key handling, tunnels, logging, and public-key authentication
+- Warn about Host blocks made entirely from negated patterns
+- Detect competing ProxyCommand and ProxyJump directives in the same scope
+- Check explicit RevokedHostKeys and CertificateFile paths
+- Report LocalCommand directives that are certainly disabled
+- Validate directive-specific percent tokens, including Match exec commands
 
 ### Changed
 

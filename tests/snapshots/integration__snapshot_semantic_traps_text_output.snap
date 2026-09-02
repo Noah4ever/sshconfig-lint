@@ -1,0 +1,8 @@
+---
+source: tests/integration.rs
+expression: output
+---
+line 1: [warning] NEGATED_HOST (negated-only-host) Host block with patterns '!internal' never matches positively (hint: add a positive pattern such as * alongside the exclusions)
+line 5: [warning] PROXY_CONFLICT (proxy-command-jump-conflict) ProxyCommand on line 4 takes effect first, so ProxyJump on this line is ignored (hint: remove either ProxyCommand or ProxyJump from this scope)
+line 6: [warning] LOCAL_COMMAND_DISABLED (local-command-enabled) LocalCommand is ignored because PermitLocalCommand is not enabled (hint: add PermitLocalCommand yes in an applicable scope or remove LocalCommand)
+line 6: [error] INVALID_TOKEN (invalid-percent-token) unsupported percent token '%Z' in LocalCommand (hint: escape a literal percent sign as %% or use a token supported by this directive)
