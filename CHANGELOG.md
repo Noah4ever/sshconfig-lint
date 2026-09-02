@@ -19,6 +19,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 - Validate directive-specific percent tokens, including Match exec commands
 - Publish LSP diagnostics from nested Includes on the included file URI
 - Snapshot every new semantic diagnostic in text, JSON, SARIF, and GitHub formats
+- Add a tested Neovim configuration for the built-in LSP client
+- Exercise both official Pre-Commit hooks against clean, warning, and error fixtures
+- Run the repository Action itself on Linux, macOS, and Windows in CI
+- Test verified VS Code binary downloads, checksum rejection, custom paths, and offline reuse
 
 ### Changed
 
@@ -28,6 +32,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 - Keep modern and platform-specific valid OpenSSH enum values accepted without guessing the locally installed client version
 - Split built-in rule implementations into one file per rule while preserving the pre-v1 `rules::basic` exports
 - Explain all filesystem-dependent checks in unsaved editor buffers
+- Keep the VS Code rule-guide picker synchronized with every public diagnostic
 
 ### Fixed
 

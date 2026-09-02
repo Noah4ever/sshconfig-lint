@@ -56,6 +56,9 @@ Set `VERSION=v0.5.0` or `INSTALL_DIR=~/.local/bin` to override the defaults.
 
 ## GitHub Actions
 
+The official Action is available in the
+[GitHub Marketplace](https://github.com/marketplace/actions/sshconfig-lint).
+
 ```yaml
 name: SSH config
 on: [push, pull_request]
@@ -98,6 +101,8 @@ Use `id: sshconfig-lint` when warnings should not block a commit. Override `file
 
 ## Editors
 
+### VS Code
+
 Install the [VS Code extension](https://marketplace.visualstudio.com/items?itemName=NoahThiering.sshconfig-lint) from the Marketplace or run:
 
 ```bash
@@ -105,6 +110,18 @@ code --install-extension NoahThiering.sshconfig-lint
 ```
 
 The extension starts `sshconfig-lint lsp`, downloads a matching verified binary once, and then works offline. It recognizes `.ssh/config`, `ssh_config`, and chezmoi's `dot_ssh/config`. No telemetry is collected. Its source is available in [`editors/vscode`](editors/vscode).
+
+### Neovim
+
+The tested [`editors/neovim`](editors/neovim) example uses Neovim's built-in
+LSP client. Copy its small Lua module into your configuration and start it with:
+
+```lua
+require("sshconfig_lint").setup()
+```
+
+It uses the same `sshconfig-lint lsp` server as VS Code and supports a custom
+binary path.
 
 Any editor with LSP support can start:
 

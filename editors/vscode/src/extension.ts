@@ -1,4 +1,3 @@
-import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as https from 'node:https';
 import * as path from 'node:path';
@@ -11,24 +10,10 @@ import {
   LanguageClientOptions,
   ServerOptions,
 } from 'vscode-languageclient/node';
-import { checksumFor, releaseAssetFor } from './release';
+import { resolveBinaryPath } from './release';
+import { ruleGuides } from './rules';
 
 const execFileAsync = promisify(execFile);
-const repository = 'Noah4ever/sshconfig-lint';
-const rules = [
-  ['DUP_HOST', 'duplicate-host'],
-  ['MISSING_IDENTITY', 'identity-file-exists'],
-  ['WILDCARD_ORDER', 'wildcard-host-order'],
-  ['WEAK_ALGO', 'deprecated-weak-algorithms'],
-  ['DUP_DIRECTIVE', 'duplicate-directives'],
-  ['INSECURE_OPT', 'insecure-option'],
-  ['UNSAFE_CTRL_PATH', 'unsafe-control-path'],
-  ['INCLUDE_CYCLE', 'include-cycle'],
-  ['INCLUDE_READ', 'include-read'],
-  ['INCLUDE_GLOB', 'include-glob'],
-  ['INCLUDE_NO_MATCH', 'include-no-match'],
-] as const;
-
 let client: LanguageClient | undefined;
 let output: vscode.OutputChannel;
 
@@ -59,67 +44,31 @@ function download(url: string, destination: string, redirects = 0): Promise<void
   });
 }
 
-async function sha256(file: string): Promise<string> {
-  const hash = crypto.createHash('sha256');
-  await new Promise<void>((resolve, reject) => {
-    const stream = fs.createReadStream(file);
-    stream.on('data', chunk => hash.update(chunk));
-    stream.on('end', resolve);
-    stream.on('error', reject);
-  });
-  return hash.digest('hex');
-}
-
-async function managedBinary(context: vscode.ExtensionContext): Promise<string> {
-  const version = context.extension.packageJSON.sshconfigLint.cliVersion as string;
-  const directory = path.join(context.globalStorageUri.fsPath, version);
-  const executable = path.join(directory, process.platform === 'win32' ? 'sshconfig-lint.exe' : 'sshconfig-lint');
-  if (fs.existsSync(executable)) return executable;
-
-  const asset = releaseAssetFor(process.platform, process.arch);
-  await fs.promises.mkdir(directory, { recursive: true });
-  const assetPath = path.join(directory, asset.name);
-  const checksumsPath = path.join(directory, 'SHA256SUMS');
-  const base = `https://github.com/${repository}/releases/download/v${version}`;
-
-  await vscode.window.withProgress(
-    { location: vscode.ProgressLocation.Notification, title: 'Installing sshconfig-lint', cancellable: false },
-    async () => {
-      await Promise.all([
-        download(`${base}/${asset.name}`, assetPath),
-        download(`${base}/SHA256SUMS`, checksumsPath),
-      ]);
-      const expected = checksumFor(
-        await fs.promises.readFile(checksumsPath, 'utf8'),
-        asset.name,
-      );
-      if (!expected || await sha256(assetPath) !== expected) {
-        throw new Error(`Checksum verification failed for ${asset.name}`);
-      }
-
-      if (asset.archive) {
-        await execFileAsync('tar', ['-xzf', assetPath, '-C', directory]);
-        const unpacked = path.join(directory, asset.name.replace(/\.tar\.gz$/, ''));
-        await fs.promises.rename(unpacked, executable);
-        await fs.promises.chmod(executable, 0o755);
-      } else {
-        await fs.promises.rename(assetPath, executable);
-      }
-    },
-  );
-
-  return executable;
-}
-
 async function resolveBinary(context: vscode.ExtensionContext): Promise<string> {
+  const version = context.extension.packageJSON.sshconfigLint.cliVersion as string;
   const configured = vscode.workspace.getConfiguration('sshconfigLint').get<string>('binaryPath', '').trim();
-  if (configured) {
-    if (!path.isAbsolute(configured) || !fs.existsSync(configured)) {
-      throw new Error('sshconfigLint.binaryPath must point to an existing absolute path.');
-    }
-    return configured;
-  }
-  return managedBinary(context);
+  return resolveBinaryPath({
+    configuredPath: configured,
+    storageDirectory: context.globalStorageUri.fsPath,
+    version,
+    platform: process.platform,
+    architecture: process.arch,
+    download,
+    extractArchive: async (archive, directory, executable, asset) => {
+      await execFileAsync('tar', ['-xzf', archive, '-C', directory]);
+      const unpacked = path.join(directory, asset.name.replace(/\.tar\.gz$/, ''));
+      await fs.promises.rename(unpacked, executable);
+      await fs.promises.chmod(executable, 0o755);
+    },
+    runInstall: operation => vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: 'Installing sshconfig-lint',
+        cancellable: false,
+      },
+      operation,
+    ),
+  });
 }
 
 function selectors(): LanguageClientOptions['documentSelector'] {
@@ -182,7 +131,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(vscode.commands.registerCommand('sshconfigLint.openRuleGuide', async () => {
     const selected = await vscode.window.showQuickPick(
-      rules.map(([code, slug]) => ({ label: code, description: slug })),
+      ruleGuides.map(([code, slug]) => ({ label: code, description: slug })),
       { placeHolder: 'Choose an sshconfig-lint rule' },
     );
     if (selected) {

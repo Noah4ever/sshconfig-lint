@@ -65,6 +65,18 @@ jobs:
       - run: npm test
       - run: npm run package
 
+  neovim:
+    name: Neovim LSP example
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Lua
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes lua5.4
+      - name: Exercise the Neovim configuration
+        run: lua5.4 editors/neovim/tests/config_spec.lua
+
   pre-commit:
     name: Pre-Commit hooks
     runs-on: ubuntu-latest
@@ -75,14 +87,8 @@ jobs:
         with:
           python-version: "3.13"
       - run: pip install pre-commit
-      - name: Exercise strict hook in a fixture repository
-        run: |
-          mkdir -p hook-fixture/.ssh
-          cp tests/fixtures/basic.config hook-fixture/.ssh/config
-          cd hook-fixture
-          git init
-          git add .ssh/config
-          pre-commit try-repo .. sshconfig-lint-strict --files .ssh/config
+      - name: Exercise both hooks in fixture repositories
+        run: scripts/test-pre-commit.sh
 
   coverage:
     name: Code coverage

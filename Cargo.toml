@@ -11,7 +11,14 @@ homepage = "https://sshconfig-lint.apps.thiering.org"
 keywords = ["ssh", "openssh", "linter", "security", "configuration"]
 categories = ["command-line-utilities", "development-tools"]
 readme = "README.md"
-exclude = ["aur/", "editors/", "Formula/", "install.sh", ".github/"]
+exclude = [
+    "aur/",
+    "editors/",
+    "Formula/",
+    "install.sh",
+    ".github/",
+    "tests/documentation_contract.rs",
+]
 
 [[bin]]
 name = "sshconfig-lint"

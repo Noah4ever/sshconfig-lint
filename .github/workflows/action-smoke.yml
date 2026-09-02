@@ -2,6 +2,23 @@ name: Action smoke test
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - action.yml
+      - scripts/install-action.sh
+      - scripts/install-action.ps1
+      - .github/workflows/action-smoke.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - action.yml
+      - scripts/install-action.sh
+      - scripts/install-action.ps1
+      - .github/workflows/action-smoke.yml
+
+permissions:
+  contents: read
 
 jobs:
   action:
@@ -18,18 +35,27 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Create a config with a warning
+      - name: Create smoke-test configs
         shell: bash
         run: |
           mkdir -p .ssh
           printf 'Host *\n  User deploy\n\nHost work\n  User alice\n' > .ssh/config
+          printf 'Host work\n  HostName work.example.com\n  User deploy\n' > .ssh/clean_config
 
-      - name: Exercise the published binary through the Action
+      - name: Accept a clean config through the local Action
+        uses: ./
+        with:
+          paths: .ssh/clean_config
+          version: v0.5.0
+          no-includes: true
+
+      - name: Propagate a strict warning through the local Action
         id: lint
         continue-on-error: true
-        uses: Noah4ever/sshconfig-lint@v0.5.0
+        uses: ./
         with:
           paths: .ssh/config
+          version: v0.5.0
           strict: true
           no-includes: true
 

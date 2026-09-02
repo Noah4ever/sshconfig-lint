@@ -29,9 +29,10 @@ The VS Code Marketplace remains a manual browser upload because this project
 does not store a `VSCE_PAT`. The release script downloads the finished VSIX and
 prints the publisher-management URL.
 
-Publishing the GitHub Action in Marketplace is also a one-time manual release
-page step. Select "Publish this Action to the GitHub Marketplace" on the final
-GitHub release after accepting the Marketplace agreement.
+The GitHub Action is already listed in Marketplace. After the final workflow
+creates a new version, verify that the Marketplace page offers that release and
+use the release-page publication control if GitHub has not selected it
+automatically.
 
 ## Optional development checkpoint
 
