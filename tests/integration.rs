@@ -1,4 +1,4 @@
-use sshconfig_lint::{lint_file, lint_str, lint_str_portable};
+use sshconfig_lint::{lint_file, lint_str};
 use std::path::Path;
 
 #[test]
@@ -197,34 +197,68 @@ Match host internal.example.com
 
 #[test]
 fn snapshot_semantic_traps_text_output() {
-    let findings = lint_str_portable(
-        "\
-Host !internal
-  User deploy
-Host production
-  ProxyCommand ssh jump -W %h:%p
-  ProxyJump bastion
-  LocalCommand echo %Z
-",
-    );
+    let findings = lint_file(Path::new("tests/fixtures/semantic_traps.config")).unwrap();
     let output = sshconfig_lint::report::emit_text(&findings, false);
     insta::assert_snapshot!(output);
 }
 
 #[test]
 fn snapshot_semantic_traps_json_output() {
-    let findings = lint_str_portable(
-        "\
-Host !internal
-  User deploy
-Host production
-  ProxyCommand ssh jump -W %h:%p
-  ProxyJump bastion
-  LocalCommand echo %Z
-",
-    );
+    let findings = lint_file(Path::new("tests/fixtures/semantic_traps.config")).unwrap();
     let output = sshconfig_lint::report::emit_json(&findings);
     insta::assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_semantic_traps_sarif_output() {
+    let findings = lint_file(Path::new("tests/fixtures/semantic_traps.config")).unwrap();
+    let output = sshconfig_lint::report::emit_sarif(&findings);
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_semantic_traps_github_output() {
+    let findings = lint_file(Path::new("tests/fixtures/semantic_traps.config")).unwrap();
+    let output = sshconfig_lint::report::emit_github(&findings);
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn every_semantic_trap_has_the_stable_json_contract() {
+    let findings = lint_file(Path::new("tests/fixtures/semantic_traps.config")).unwrap();
+    let output: serde_json::Value =
+        serde_json::from_str(&sshconfig_lint::report::emit_json(&findings)).unwrap();
+    let diagnostics = output.as_array().unwrap();
+    let expected = [
+        ("NEGATED_HOST", "warning", "negated-only-host"),
+        ("PROXY_CONFLICT", "warning", "proxy-command-jump-conflict"),
+        (
+            "REVOKED_HOST_KEYS_UNREADABLE",
+            "error",
+            "revoked-host-keys-readable",
+        ),
+        ("MISSING_CERTIFICATE", "error", "certificate-file-exists"),
+        ("LOCAL_COMMAND_DISABLED", "warning", "local-command-enabled"),
+        ("INVALID_TOKEN", "error", "invalid-percent-token"),
+    ];
+
+    assert_eq!(diagnostics.len(), expected.len());
+    for (code, severity, rule) in expected {
+        let diagnostic = diagnostics
+            .iter()
+            .find(|diagnostic| diagnostic["code"] == code)
+            .unwrap_or_else(|| panic!("missing {code}"));
+        assert_eq!(diagnostic["severity"], severity);
+        assert_eq!(diagnostic["rule"], rule);
+        assert!(diagnostic["line"].as_u64().is_some_and(|line| line > 0));
+        assert_eq!(diagnostic["file"], "tests/fixtures/semantic_traps.config");
+        assert!(!diagnostic["message"].as_str().unwrap().is_empty());
+        assert!(!diagnostic["hint"].as_str().unwrap().is_empty());
+        assert_eq!(
+            diagnostic["documentation"],
+            format!("https://sshconfig-lint.apps.thiering.org/en/rules/{rule}")
+        );
+    }
 }
 
 #[test]

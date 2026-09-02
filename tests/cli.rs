@@ -114,3 +114,31 @@ fn cli_config_and_positional_path_are_mutually_exclusive() {
         .failure()
         .stderr(predicate::str::contains("cannot be used with"));
 }
+
+#[test]
+fn cli_new_error_diagnostics_exit_1_in_every_output_format() {
+    for format in ["text", "json", "sarif", "github"] {
+        cargo_bin_cmd!("sshconfig-lint")
+            .arg("tests/fixtures/semantic_traps.config")
+            .arg("--format")
+            .arg(format)
+            .assert()
+            .code(1);
+    }
+}
+
+#[test]
+fn cli_new_warning_preserves_default_and_strict_exit_codes() {
+    cargo_bin_cmd!("sshconfig-lint")
+        .arg("tests/fixtures/negated_only_host.config")
+        .assert()
+        .code(0)
+        .stdout(predicate::str::contains("NEGATED_HOST"));
+
+    cargo_bin_cmd!("sshconfig-lint")
+        .arg("tests/fixtures/negated_only_host.config")
+        .arg("--strict")
+        .assert()
+        .code(1)
+        .stdout(predicate::str::contains("NEGATED_HOST"));
+}

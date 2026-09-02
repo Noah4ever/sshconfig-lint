@@ -255,6 +255,23 @@ mod tests {
     }
 
     #[test]
+    fn github_escapes_every_reserved_character_in_properties_and_messages() {
+        let finding = Finding::new(
+            Severity::Error,
+            "invalid-percent-token",
+            "INVALID_TOKEN",
+            "first%\r\nsecond",
+            Span::with_file(7, "configs/a:b,c% file"),
+        )
+        .with_hint("try 100%, then\nretry");
+
+        assert_eq!(
+            emit_github(&[finding]),
+            "::error file=configs/a%3Ab%2Cc%25 file,line=7,title=INVALID_TOKEN::first%25%0D%0Asecond Hint: try 100%25, then%0Aretry\n"
+        );
+    }
+
+    #[test]
     fn colored_error_uses_ansi() {
         let finding = Finding::new(Severity::Error, "test", "TEST", "bad", Span::new(1));
         let output = emit_text(&[finding], true);

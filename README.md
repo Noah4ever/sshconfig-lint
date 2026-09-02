@@ -112,7 +112,7 @@ Any editor with LSP support can start:
 sshconfig-lint lsp
 ```
 
-The v0.5 language server publishes full-line diagnostics on open, change, and save. Untitled buffers run content-only rules; saved files additionally resolve `Include` and filesystem paths.
+The v0.5 language server publishes full-line diagnostics on open, change, and save. Untitled buffers run content-only rules; saved files additionally resolve `Include` and filesystem paths. Findings from nested Includes are attached to the included file and cleared with the root document.
 
 ## Output formats
 

@@ -105,12 +105,18 @@ directive. LocalCommand diagnostics are suppressed when an unresolved
 
 Suggested tag: `checkpoint/05-output-contracts`
 
-- [ ] Add nested Include fixtures to LSP end-to-end tests
-- [ ] Expand GitHub annotation escaping tests
-- [ ] Snapshot text, JSON, SARIF, and GitHub output for every new diagnostic
-- [ ] Verify file, line, severity, code, message, hint, and documentation URL
-- [ ] Test unsaved buffers and filesystem-dependent checks separately
-- [ ] Preserve existing exit-code behavior
+- [x] Add nested Include fixtures to LSP end-to-end tests
+- [x] Expand GitHub annotation escaping tests
+- [x] Snapshot text, JSON, SARIF, and GitHub output for every new diagnostic
+- [x] Verify file, line, severity, code, message, hint, and documentation URL
+- [x] Test unsaved buffers and filesystem-dependent checks separately
+- [x] Preserve existing exit-code behavior
+
+LSP diagnostics originating in resolved Include files are published for the
+included file URI, with ranges calculated from that file's contents. Closing
+the root document also clears every diagnostic URI produced by its Include
+tree. Untitled buffers keep content-only diagnostics and explain which checks
+become available after saving.
 
 ## Checkpoint 06: integrations and documentation
 

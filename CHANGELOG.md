@@ -17,6 +17,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 - Check explicit RevokedHostKeys and CertificateFile paths
 - Report LocalCommand directives that are certainly disabled
 - Validate directive-specific percent tokens, including Match exec commands
+- Publish LSP diagnostics from nested Includes on the included file URI
+- Snapshot every new semantic diagnostic in text, JSON, SARIF, and GitHub formats
 
 ### Changed
 
@@ -25,6 +27,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 - Accept OpenSSH-compatible quoted numeric values and explicit positive signs
 - Keep modern and platform-specific valid OpenSSH enum values accepted without guessing the locally installed client version
 - Split built-in rule implementations into one file per rule while preserving the pre-v1 `rules::basic` exports
+- Explain all filesystem-dependent checks in unsaved editor buffers
 
 ### Fixed
 

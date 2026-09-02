@@ -1,0 +1,215 @@
+---
+source: tests/integration.rs
+expression: output
+---
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "results": [
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "tests/fixtures/semantic_traps.config"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Host block with patterns '!internal' never matches positively Hint: add a positive pattern such as * alongside the exclusions"
+          },
+          "ruleId": "NEGATED_HOST"
+        },
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "tests/fixtures/semantic_traps.config"
+                },
+                "region": {
+                  "startLine": 6
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "ProxyCommand on line 5 takes effect first, so ProxyJump on this line is ignored Hint: remove either ProxyCommand or ProxyJump from this scope"
+          },
+          "ruleId": "PROXY_CONFLICT"
+        },
+        {
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "tests/fixtures/semantic_traps.config"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "RevokedHostKeys file is missing or unreadable: tests/fixtures/missing-revoked.krl; host authentication will be refused for all hosts Hint: fix the path, permissions, or use RevokedHostKeys none intentionally"
+          },
+          "ruleId": "REVOKED_HOST_KEYS_UNREADABLE"
+        },
+        {
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "tests/fixtures/semantic_traps.config"
+                },
+                "region": {
+                  "startLine": 8
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "CertificateFile not found or unreadable: tests/fixtures/missing-cert.pub Hint: check the path or remove the CertificateFile directive"
+          },
+          "ruleId": "MISSING_CERTIFICATE"
+        },
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "tests/fixtures/semantic_traps.config"
+                },
+                "region": {
+                  "startLine": 9
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "LocalCommand is ignored because PermitLocalCommand is not enabled Hint: add PermitLocalCommand yes in an applicable scope or remove LocalCommand"
+          },
+          "ruleId": "LOCAL_COMMAND_DISABLED"
+        },
+        {
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "tests/fixtures/semantic_traps.config"
+                },
+                "region": {
+                  "startLine": 9
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "unsupported percent token '%Z' in LocalCommand Hint: escape a literal percent sign as %% or use a token supported by this directive"
+          },
+          "ruleId": "INVALID_TOKEN"
+        }
+      ],
+      "tool": {
+        "driver": {
+          "informationUri": "https://sshconfig-lint.apps.thiering.org",
+          "name": "sshconfig-lint",
+          "rules": [
+            {
+              "helpUri": "https://sshconfig-lint.apps.thiering.org/en/rules/invalid-percent-token",
+              "id": "INVALID_TOKEN",
+              "name": "invalid-percent-token",
+              "properties": {
+                "defaultConfiguration": {
+                  "level": "error"
+                }
+              },
+              "shortDescription": {
+                "text": "unsupported percent token '%Z' in LocalCommand"
+              }
+            },
+            {
+              "helpUri": "https://sshconfig-lint.apps.thiering.org/en/rules/local-command-enabled",
+              "id": "LOCAL_COMMAND_DISABLED",
+              "name": "local-command-enabled",
+              "properties": {
+                "defaultConfiguration": {
+                  "level": "warning"
+                }
+              },
+              "shortDescription": {
+                "text": "LocalCommand is ignored because PermitLocalCommand is not enabled"
+              }
+            },
+            {
+              "helpUri": "https://sshconfig-lint.apps.thiering.org/en/rules/certificate-file-exists",
+              "id": "MISSING_CERTIFICATE",
+              "name": "certificate-file-exists",
+              "properties": {
+                "defaultConfiguration": {
+                  "level": "error"
+                }
+              },
+              "shortDescription": {
+                "text": "CertificateFile not found or unreadable: tests/fixtures/missing-cert.pub"
+              }
+            },
+            {
+              "helpUri": "https://sshconfig-lint.apps.thiering.org/en/rules/negated-only-host",
+              "id": "NEGATED_HOST",
+              "name": "negated-only-host",
+              "properties": {
+                "defaultConfiguration": {
+                  "level": "warning"
+                }
+              },
+              "shortDescription": {
+                "text": "Host block with patterns '!internal' never matches positively"
+              }
+            },
+            {
+              "helpUri": "https://sshconfig-lint.apps.thiering.org/en/rules/proxy-command-jump-conflict",
+              "id": "PROXY_CONFLICT",
+              "name": "proxy-command-jump-conflict",
+              "properties": {
+                "defaultConfiguration": {
+                  "level": "warning"
+                }
+              },
+              "shortDescription": {
+                "text": "ProxyCommand on line 5 takes effect first, so ProxyJump on this line is ignored"
+              }
+            },
+            {
+              "helpUri": "https://sshconfig-lint.apps.thiering.org/en/rules/revoked-host-keys-readable",
+              "id": "REVOKED_HOST_KEYS_UNREADABLE",
+              "name": "revoked-host-keys-readable",
+              "properties": {
+                "defaultConfiguration": {
+                  "level": "error"
+                }
+              },
+              "shortDescription": {
+                "text": "RevokedHostKeys file is missing or unreadable: tests/fixtures/missing-revoked.krl; host authentication will be refused for all hosts"
+              }
+            }
+          ],
+          "version": "0.5.0"
+        }
+      }
+    }
+  ],
+  "version": "2.1.0"
+}

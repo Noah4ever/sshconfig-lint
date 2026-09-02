@@ -2,7 +2,9 @@
 source: tests/integration.rs
 expression: output
 ---
-line 1: [warning] NEGATED_HOST (negated-only-host) Host block with patterns '!internal' never matches positively (hint: add a positive pattern such as * alongside the exclusions)
-line 5: [warning] PROXY_CONFLICT (proxy-command-jump-conflict) ProxyCommand on line 4 takes effect first, so ProxyJump on this line is ignored (hint: remove either ProxyCommand or ProxyJump from this scope)
-line 6: [warning] LOCAL_COMMAND_DISABLED (local-command-enabled) LocalCommand is ignored because PermitLocalCommand is not enabled (hint: add PermitLocalCommand yes in an applicable scope or remove LocalCommand)
-line 6: [error] INVALID_TOKEN (invalid-percent-token) unsupported percent token '%Z' in LocalCommand (hint: escape a literal percent sign as %% or use a token supported by this directive)
+tests/fixtures/semantic_traps.config:line 1: [warning] NEGATED_HOST (negated-only-host) Host block with patterns '!internal' never matches positively (hint: add a positive pattern such as * alongside the exclusions)
+tests/fixtures/semantic_traps.config:line 6: [warning] PROXY_CONFLICT (proxy-command-jump-conflict) ProxyCommand on line 5 takes effect first, so ProxyJump on this line is ignored (hint: remove either ProxyCommand or ProxyJump from this scope)
+tests/fixtures/semantic_traps.config:line 7: [error] REVOKED_HOST_KEYS_UNREADABLE (revoked-host-keys-readable) RevokedHostKeys file is missing or unreadable: tests/fixtures/missing-revoked.krl; host authentication will be refused for all hosts (hint: fix the path, permissions, or use RevokedHostKeys none intentionally)
+tests/fixtures/semantic_traps.config:line 8: [error] MISSING_CERTIFICATE (certificate-file-exists) CertificateFile not found or unreadable: tests/fixtures/missing-cert.pub (hint: check the path or remove the CertificateFile directive)
+tests/fixtures/semantic_traps.config:line 9: [warning] LOCAL_COMMAND_DISABLED (local-command-enabled) LocalCommand is ignored because PermitLocalCommand is not enabled (hint: add PermitLocalCommand yes in an applicable scope or remove LocalCommand)
+tests/fixtures/semantic_traps.config:line 9: [error] INVALID_TOKEN (invalid-percent-token) unsupported percent token '%Z' in LocalCommand (hint: escape a literal percent sign as %% or use a token supported by this directive)

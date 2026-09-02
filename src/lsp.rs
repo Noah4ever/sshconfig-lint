@@ -1,3 +1,6 @@
+use std::collections::{HashMap, HashSet};
+
+use tokio::sync::Mutex;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::{
     CodeDescription, Diagnostic, DiagnosticSeverity, DidChangeTextDocumentParams,
@@ -14,6 +17,7 @@ use crate::{lint_str_at_path, lint_str_portable};
 #[derive(Debug)]
 struct Backend {
     client: Client,
+    published_uris: Mutex<HashMap<Url, HashSet<Url>>>,
 }
 
 fn severity(severity: Severity) -> DiagnosticSeverity {
@@ -32,40 +36,85 @@ fn line_end_utf16(source: &str, one_based_line: usize) -> u32 {
         .unwrap_or_default()
 }
 
-fn diagnostics(source: &str, uri: &Url) -> Vec<Diagnostic> {
+fn needs_filesystem_context(source: &str) -> bool {
+    source.lines().any(|line| {
+        let keyword = line.split_whitespace().next().unwrap_or_default();
+        [
+            "include",
+            "identityfile",
+            "certificatefile",
+            "revokedhostkeys",
+        ]
+        .iter()
+        .any(|candidate| keyword.eq_ignore_ascii_case(candidate))
+    })
+}
+
+fn editor_filesystem_limit(source: &str) -> Diagnostic {
+    Diagnostic {
+        range: Range::new(
+            Position::new(0, 0),
+            Position::new(0, line_end_utf16(source, 1)),
+        ),
+        severity: Some(DiagnosticSeverity::INFORMATION),
+        code: Some(NumberOrString::String("EDITOR_FS_LIMIT".to_string())),
+        code_description: Url::parse("https://sshconfig-lint.apps.thiering.org/en/editor")
+            .ok()
+            .map(|href| CodeDescription { href }),
+        source: Some("sshconfig-lint".to_string()),
+        message: "Save this document to enable Include resolution and filesystem-dependent checks for IdentityFile, CertificateFile, and RevokedHostKeys paths."
+            .to_string(),
+        ..Diagnostic::default()
+    }
+}
+
+fn diagnostics_by_uri(source: &str, uri: &Url) -> HashMap<Url, Vec<Diagnostic>> {
     let path = uri.to_file_path().ok();
     let findings = path
         .as_deref()
         .map(|path| lint_str_at_path(source, path, true))
         .unwrap_or_else(|| lint_str_portable(source));
 
-    let mut diagnostics: Vec<_> = findings
-        .into_iter()
-        .map(|finding| finding_to_diagnostic(source, finding))
-        .collect();
+    let mut diagnostics = HashMap::<Url, Vec<Diagnostic>>::new();
+    diagnostics.entry(uri.clone()).or_default();
 
-    if path.is_none()
-        && source.lines().any(|line| {
-            let keyword = line.split_whitespace().next().unwrap_or_default();
-            keyword.eq_ignore_ascii_case("include") || keyword.eq_ignore_ascii_case("identityfile")
-        })
-    {
-        diagnostics.push(Diagnostic {
-            range: Range::new(Position::new(0, 0), Position::new(0, line_end_utf16(source, 1))),
-            severity: Some(DiagnosticSeverity::INFORMATION),
-            code: Some(NumberOrString::String("EDITOR_FS_LIMIT".to_string())),
-            code_description: Url::parse(
-                "https://sshconfig-lint.apps.thiering.org/en/editor",
-            )
-            .ok()
-            .map(|href| CodeDescription { href }),
-            source: Some("sshconfig-lint".to_string()),
-            message: "Save this document to enable Include resolution and filesystem-dependent checks such as IdentityFile existence.".to_string(),
-            ..Diagnostic::default()
-        });
+    for finding in findings {
+        let target_uri = finding
+            .span
+            .file
+            .as_deref()
+            .and_then(|file| Url::from_file_path(file).ok())
+            .unwrap_or_else(|| uri.clone());
+        let target_source = if target_uri == *uri {
+            source.to_string()
+        } else {
+            target_uri
+                .to_file_path()
+                .ok()
+                .and_then(|path| std::fs::read_to_string(path).ok())
+                .unwrap_or_default()
+        };
+        diagnostics
+            .entry(target_uri)
+            .or_default()
+            .push(finding_to_diagnostic(&target_source, finding));
+    }
+
+    if path.is_none() && needs_filesystem_context(source) {
+        diagnostics
+            .entry(uri.clone())
+            .or_default()
+            .push(editor_filesystem_limit(source));
     }
 
     diagnostics
+}
+
+#[cfg(test)]
+fn diagnostics(source: &str, uri: &Url) -> Vec<Diagnostic> {
+    diagnostics_by_uri(source, uri)
+        .remove(uri)
+        .unwrap_or_default()
 }
 
 fn finding_to_diagnostic(source: &str, finding: Finding) -> Diagnostic {
@@ -92,9 +141,53 @@ fn finding_to_diagnostic(source: &str, finding: Finding) -> Diagnostic {
 
 impl Backend {
     async fn publish(&self, uri: Url, text: String, version: Option<i32>) {
-        self.client
-            .publish_diagnostics(uri.clone(), diagnostics(&text, &uri), version)
-            .await;
+        let diagnostics = diagnostics_by_uri(&text, &uri);
+        let current_uris = diagnostics.keys().cloned().collect::<HashSet<_>>();
+        let stale_uris = {
+            let mut published = self.published_uris.lock().await;
+            let previous = published
+                .insert(uri.clone(), current_uris.clone())
+                .unwrap_or_default();
+            previous
+                .difference(&current_uris)
+                .cloned()
+                .collect::<Vec<_>>()
+        };
+
+        for stale_uri in stale_uris {
+            self.client
+                .publish_diagnostics(stale_uri, Vec::new(), None)
+                .await;
+        }
+
+        let mut documents = diagnostics.into_iter().collect::<Vec<_>>();
+        documents.sort_by(|(left, _), (right, _)| {
+            let left_is_root = left == &uri;
+            let right_is_root = right == &uri;
+            right_is_root
+                .cmp(&left_is_root)
+                .then(left.as_str().cmp(right.as_str()))
+        });
+        for (document_uri, document_diagnostics) in documents {
+            let document_version = (document_uri == uri).then_some(version).flatten();
+            self.client
+                .publish_diagnostics(document_uri, document_diagnostics, document_version)
+                .await;
+        }
+    }
+
+    async fn clear(&self, uri: Url) {
+        let published_uris = self
+            .published_uris
+            .lock()
+            .await
+            .remove(&uri)
+            .unwrap_or_else(|| HashSet::from([uri.clone()]));
+        for published_uri in published_uris {
+            self.client
+                .publish_diagnostics(published_uri, Vec::new(), None)
+                .await;
+        }
     }
 }
 
@@ -171,9 +264,7 @@ impl LanguageServer for Backend {
     }
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
-        self.client
-            .publish_diagnostics(params.text_document.uri, Vec::new(), None)
-            .await;
+        self.clear(params.text_document.uri).await;
     }
 }
 
@@ -187,7 +278,10 @@ pub fn run() {
     runtime.block_on(async {
         let stdin = tokio::io::stdin();
         let stdout = tokio::io::stdout();
-        let (service, socket) = LspService::new(|client| Backend { client });
+        let (service, socket) = LspService::new(|client| Backend {
+            client,
+            published_uris: Mutex::new(HashMap::new()),
+        });
         Server::new(stdin, stdout, socket).serve(service).await;
     });
 }
@@ -226,6 +320,47 @@ mod tests {
     }
 
     #[test]
+    fn every_untitled_filesystem_directive_explains_the_editor_limit() {
+        for source in [
+            "CertificateFile /definitely/missing\n",
+            "RevokedHostKeys /definitely/missing\n",
+        ] {
+            let uri = Url::parse("untitled:ssh-config").unwrap();
+            let diagnostics = diagnostics(source, &uri);
+            assert_eq!(diagnostics.len(), 1, "{source}: {diagnostics:?}");
+            assert_eq!(
+                diagnostics[0].code,
+                Some(NumberOrString::String("EDITOR_FS_LIMIT".to_string()))
+            );
+        }
+    }
+
+    #[test]
+    fn saved_buffers_run_every_filesystem_rule() {
+        let directory = tempfile::tempdir().unwrap();
+        let uri = Url::from_file_path(directory.path().join("ssh_config")).unwrap();
+        let source = format!(
+            "IdentityFile {}\nCertificateFile {}\nRevokedHostKeys {}\n",
+            directory.path().join("missing-key").display(),
+            directory.path().join("missing-cert").display(),
+            directory.path().join("missing-revoked").display(),
+        );
+        let diagnostics = diagnostics(&source, &uri);
+        for code in [
+            "MISSING_IDENTITY",
+            "MISSING_CERTIFICATE",
+            "REVOKED_HOST_KEYS_UNREADABLE",
+        ] {
+            assert!(
+                diagnostics.iter().any(|diagnostic| {
+                    diagnostic.code == Some(NumberOrString::String(code.to_string()))
+                }),
+                "missing {code}: {diagnostics:?}"
+            );
+        }
+    }
+
+    #[test]
     fn file_buffers_keep_their_source_path() {
         let source = "Host example\nHost example\n";
         let directory = tempfile::tempdir().unwrap();
@@ -251,5 +386,33 @@ mod tests {
         assert!(diagnostics(source, &uri).iter().any(|diagnostic| {
             diagnostic.code == Some(NumberOrString::String("DUP_HOST".to_string()))
         }));
+    }
+
+    #[test]
+    fn nested_include_diagnostics_keep_the_included_file_uri() {
+        let directory = tempfile::tempdir().unwrap();
+        let nested_directory = directory.path().join("nested");
+        std::fs::create_dir(&nested_directory).unwrap();
+        let deepest = nested_directory.join("deep.conf");
+        std::fs::write(&deepest, "Host !internal\n").unwrap();
+        std::fs::write(
+            directory.path().join("first.conf"),
+            "Include nested/deep.conf\n",
+        )
+        .unwrap();
+        let root = directory.path().join("ssh_config");
+        let root_uri = Url::from_file_path(root).unwrap();
+        let deepest_uri = Url::from_file_path(deepest.canonicalize().unwrap()).unwrap();
+
+        let by_uri = diagnostics_by_uri("Include first.conf\n", &root_uri);
+        assert!(
+            by_uri.get(&deepest_uri).is_some_and(|diagnostics| {
+                diagnostics.iter().any(|diagnostic| {
+                    diagnostic.code == Some(NumberOrString::String("NEGATED_HOST".to_string()))
+                })
+            }),
+            "nested diagnostics were published for: {:?}",
+            by_uri.keys().collect::<Vec<_>>()
+        );
     }
 }

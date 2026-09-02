@@ -134,6 +134,81 @@ fn lsp_publishes_and_updates_diagnostics_over_stdio() {
             .is_empty()
     );
 
+    let directory = tempfile::tempdir().unwrap();
+    let nested_directory = directory.path().join("nested");
+    std::fs::create_dir(&nested_directory).unwrap();
+    let deepest = nested_directory.join("deep.conf");
+    let missing_certificate = directory
+        .path()
+        .join("missing-cert.pub")
+        .to_string_lossy()
+        .replace('\\', "/");
+    std::fs::write(
+        &deepest,
+        format!("Host !internal\n  CertificateFile {missing_certificate}\n"),
+    )
+    .unwrap();
+    std::fs::write(
+        directory.path().join("first.conf"),
+        "Include nested/deep.conf\n",
+    )
+    .unwrap();
+    let root = directory.path().join("ssh_config");
+    let root_uri = tower_lsp::lsp_types::Url::from_file_path(&root)
+        .unwrap()
+        .to_string();
+    let deepest_uri = tower_lsp::lsp_types::Url::from_file_path(deepest.canonicalize().unwrap())
+        .unwrap()
+        .to_string();
+
+    write_message(
+        &mut stdin,
+        &json!({
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": {
+                "textDocument": {
+                    "uri": root_uri,
+                    "languageId": "sshconfig",
+                    "version": 1,
+                    "text": "Include first.conf\n"
+                }
+            }
+        }),
+    );
+    let included = receive_matching(&receiver, |message| {
+        message["method"] == "textDocument/publishDiagnostics"
+            && message["params"]["uri"] == deepest_uri
+    });
+    let included_diagnostics = included["params"]["diagnostics"].as_array().unwrap();
+    for code in ["NEGATED_HOST", "MISSING_CERTIFICATE"] {
+        let diagnostic = included_diagnostics
+            .iter()
+            .find(|diagnostic| diagnostic["code"] == code)
+            .unwrap_or_else(|| panic!("missing {code}: {included_diagnostics:?}"));
+        assert!(
+            diagnostic["codeDescription"]["href"]
+                .as_str()
+                .is_some_and(|href| href.contains("/en/rules/"))
+        );
+    }
+    assert_eq!(included_diagnostics[0]["range"]["start"]["line"], 0);
+
+    write_message(
+        &mut stdin,
+        &json!({
+            "jsonrpc": "2.0",
+            "method": "textDocument/didClose",
+            "params": {"textDocument": {"uri": root_uri}}
+        }),
+    );
+    let cleared_include = receive_matching(&receiver, |message| {
+        message["method"] == "textDocument/publishDiagnostics"
+            && message["params"]["uri"] == deepest_uri
+            && message["params"]["diagnostics"] == json!([])
+    });
+    assert_eq!(cleared_include["params"]["uri"], deepest_uri);
+
     write_message(
         &mut stdin,
         &json!({"jsonrpc": "2.0", "id": 2, "method": "shutdown", "params": null}),
