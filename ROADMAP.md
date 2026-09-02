@@ -134,7 +134,7 @@ Suggested tag: `checkpoint/06-integrations`
 
 The Action smoke workflow exercises the repository's current composite Action
 with the published version-matched binary on Linux, macOS, and Windows. The
-documentation contract keeps all 18 public rule codes aligned across the core
+documentation contract keeps all 19 public rule codes aligned across the core
 README, VS Code picker, and the playground when both repositories are checked
 out next to each other. The public Marketplace listing was verified on
 September 2, 2026.
@@ -143,18 +143,26 @@ September 2, 2026.
 
 Suggested tag: `checkpoint/07-v1-release-candidate`
 
-- [ ] No open critical or high-severity defects
-- [ ] Full Rust, CLI, Action, pre-commit, LSP, and extension suites pass
-- [ ] Release matrix passes for Linux glibc and musl, macOS Intel and Apple
+- [x] No known open critical or high-severity defects
+- [x] Full Rust, CLI, Action, pre-commit, LSP, and extension suites pass
+- [x] Release matrix passes for Linux glibc and musl, macOS Intel and Apple
       Silicon, and Windows x86_64 and ARM64
-- [ ] Rule codes, CLI output, JSON, SARIF, LSP, exit codes, support policy, and
+- [x] Rule codes, CLI output, JSON, SARIF, LSP, exit codes, support policy, and
       upgrade policy are documented as stable
 - [ ] At least ten external users have used the Action, hook, LSP, or extension
       in a real workflow
 - [ ] At least four weeks of v0.5 feedback have elapsed
-- [ ] `cargo publish --dry-run` and the VSIX package checks pass
-- [ ] The macOS release path has been rehearsed without publishing
-- [ ] Changelog and release notes are complete
+- [x] `cargo publish --dry-run` and the VSIX package checks pass
+- [x] The macOS release path has been rehearsed without publishing
+- [x] Changelog and release notes are complete
+
+The engineering release-candidate gates were verified on September 2, 2026.
+The [full test workflow](https://github.com/Noah4ever/sshconfig-lint/actions/runs/33651102591),
+the [Action smoke test](https://github.com/Noah4ever/sshconfig-lint/actions/runs/33651342137),
+and the [eight-platform release rehearsal](https://github.com/Noah4ever/sshconfig-lint/actions/runs/33650554987)
+passed. v0.5.0 was published on August 28, 2026, so the four-week feedback gate
+cannot complete before September 25, 2026. External workflow adoption must be
+confirmed from real users rather than inferred from downloads.
 
 ## v1.0 publication
 

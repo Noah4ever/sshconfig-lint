@@ -49,7 +49,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 - Percent-encode reserved and non-ASCII characters in SARIF artifact URIs
 - Recognize filesystem-dependent `Key=Value` directives in untitled LSP buffers
 
-## [0.5.0] - 2026-08-24
+## [0.5.0] - 2026-08-28
 
 ### Added
 
