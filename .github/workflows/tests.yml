@@ -87,7 +87,7 @@ jobs:
         with:
           python-version: "3.13"
       - run: pip install pre-commit
-      - name: Exercise both hooks in fixture repositories
+      - name: Exercise both hooks in a fixture repository
         run: scripts/test-pre-commit.sh
 
   coverage:
