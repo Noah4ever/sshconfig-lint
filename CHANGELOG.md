@@ -37,6 +37,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 ### Fixed
 
 - Accept OpenSSH's `IdentityFile none` sentinel instead of reporting it as a missing file
+- Do not print `No issues found` when every requested config file is missing or unreadable
 
 ## [0.5.0] - 2026-08-24
 

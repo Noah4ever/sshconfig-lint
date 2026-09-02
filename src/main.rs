@@ -111,6 +111,7 @@ fn main() {
         && std::env::var_os("NO_COLOR").is_none();
 
     let output = match args.format {
+        OutputFormat::Text if unreadable && findings.is_empty() => String::new(),
         OutputFormat::Text => report::emit_text(&findings, colored),
         OutputFormat::Json => report::emit_json(&findings),
         OutputFormat::Sarif => report::emit_sarif(&findings),

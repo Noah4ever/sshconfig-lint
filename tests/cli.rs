@@ -1,5 +1,6 @@
 use assert_cmd::cargo::cargo_bin_cmd;
 use predicates::prelude::*;
+use tempfile::tempdir;
 
 #[test]
 fn cli_clean_config_exits_0() {
@@ -18,7 +19,45 @@ fn cli_missing_config_file_exits_2() {
         .arg("tests/fixtures/does_not_exist.config")
         .assert()
         .code(2)
-        .stderr(predicate::str::contains("not found"));
+        .stderr(predicate::str::contains("not found"))
+        .stdout(predicate::str::is_empty());
+}
+
+#[test]
+fn cli_missing_default_config_exits_2_without_claiming_success() {
+    let home = tempdir().unwrap();
+
+    cargo_bin_cmd!("sshconfig-lint")
+        .env("HOME", home.path())
+        .env("USERPROFILE", home.path())
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains(".ssh").and(predicate::str::contains("config")))
+        .stdout(predicate::str::is_empty());
+}
+
+#[test]
+fn cli_unreadable_and_linted_paths_keep_real_findings_without_success_message() {
+    cargo_bin_cmd!("sshconfig-lint")
+        .arg("tests/fixtures/does_not_exist.config")
+        .arg("tests/fixtures/duplicate_host.config")
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("not found"))
+        .stdout(predicate::str::contains("DUP_HOST"))
+        .stdout(predicate::str::contains("No issues found").not());
+}
+
+#[test]
+fn cli_missing_config_keeps_json_machine_readable() {
+    cargo_bin_cmd!("sshconfig-lint")
+        .arg("tests/fixtures/does_not_exist.config")
+        .arg("--format")
+        .arg("json")
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("not found"))
+        .stdout(predicate::eq("[]\n"));
 }
 
 #[test]
