@@ -3,6 +3,10 @@ use std::fs;
 use sshconfig_lint::{lint_str_at_path, lint_str_portable};
 use tempfile::TempDir;
 
+fn config_path(path: &std::path::Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
+}
+
 fn findings_with_code(input: &str, code: &str) -> Vec<sshconfig_lint::model::Finding> {
     lint_str_portable(input)
         .into_iter()
@@ -171,14 +175,14 @@ fn revoked_host_keys_requires_every_explicit_file_to_be_readable() {
 
     let source = format!(
         "RevokedHostKeys \"{}\" {}",
-        existing.display(),
-        missing.display()
+        config_path(&existing),
+        config_path(&missing)
     );
     let findings = filesystem_findings(&source, "REVOKED_HOST_KEYS_UNREADABLE", &temp);
 
     assert_eq!(findings.len(), 1);
     assert_eq!(findings[0].span.line, 1);
-    assert!(findings[0].message.contains(&missing.display().to_string()));
+    assert!(findings[0].message.contains(&config_path(&missing)));
     assert!(findings[0].message.contains("refused for all hosts"));
 }
 
@@ -455,6 +459,6 @@ fn certificate_file_accepts_a_quoted_existing_path_with_spaces() {
     let certificate = temp.path().join("work key-cert.pub");
     fs::write(&certificate, "certificate").unwrap();
 
-    let source = format!("CertificateFile \"{}\"", certificate.display());
+    let source = format!("CertificateFile \"{}\"", config_path(&certificate));
     assert!(filesystem_findings(&source, "MISSING_CERTIFICATE", &temp).is_empty());
 }
