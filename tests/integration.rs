@@ -212,7 +212,7 @@ fn snapshot_semantic_traps_json_output() {
 #[test]
 fn snapshot_semantic_traps_sarif_output() {
     let findings = lint_file(Path::new("tests/fixtures/semantic_traps.config")).unwrap();
-    let output = sshconfig_lint::report::emit_sarif(&findings);
+    let output = normalize_sarif_version(sshconfig_lint::report::emit_sarif(&findings));
     insta::assert_snapshot!(output);
 }
 
@@ -276,7 +276,16 @@ fn snapshot_common_mistakes_json_output() {
 #[test]
 fn snapshot_common_mistakes_sarif_output() {
     let findings = lint_file(Path::new("tests/fixtures/common_mistakes.config")).unwrap();
-    insta::assert_snapshot!(sshconfig_lint::report::emit_sarif(&findings));
+    insta::assert_snapshot!(normalize_sarif_version(sshconfig_lint::report::emit_sarif(
+        &findings
+    )));
+}
+
+fn normalize_sarif_version(output: String) -> String {
+    output.replace(
+        &format!("\"version\": \"{}\"", env!("CARGO_PKG_VERSION")),
+        "\"version\": \"<VERSION>\"",
+    )
 }
 
 #[test]

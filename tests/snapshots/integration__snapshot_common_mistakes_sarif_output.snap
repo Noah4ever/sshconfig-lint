@@ -194,7 +194,7 @@ expression: "sshconfig_lint::report::emit_sarif(&findings)"
               }
             }
           ],
-          "version": "0.5.0"
+          "version": "<VERSION>"
         }
       }
     }
