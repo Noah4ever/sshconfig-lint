@@ -2,7 +2,7 @@
   "name": "sshconfig-lint",
   "displayName": "sshconfig-lint",
   "description": "Find semantic mistakes in OpenSSH client configs while you edit.",
-  "version": "0.5.0",
+  "version": "1.0.0",
   "publisher": "NoahThiering",
   "license": "MIT",
   "repository": {
@@ -32,7 +32,7 @@
     "vscode:prepublish": "npm run compile"
   },
   "sshconfigLint": {
-    "cliVersion": "0.5.0"
+    "cliVersion": "1.0.0"
   },
   "contributes": {
     "languages": [

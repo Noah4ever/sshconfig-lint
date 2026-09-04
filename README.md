@@ -68,7 +68,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: Noah4ever/sshconfig-lint@v0.5.0
+      - uses: Noah4ever/sshconfig-lint@v1.0.0
         with:
           paths: |
             .ssh/config
@@ -92,7 +92,7 @@ For repositories with GitHub Code Scanning enabled, SARIF can be uploaded separa
 ```yaml
 repos:
   - repo: https://github.com/Noah4ever/sshconfig-lint
-    rev: v0.5.0
+    rev: v1.0.0
     hooks:
       - id: sshconfig-lint-strict
 ```
