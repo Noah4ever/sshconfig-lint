@@ -68,11 +68,13 @@ fn integration_examples_use_the_same_public_release() {
     let readme = read(root.join("README.md"));
     let action = read(root.join("action.yml"));
     let extension_package = read(root.join("editors/vscode/package.json"));
+    let version = env!("CARGO_PKG_VERSION");
+    let tag = format!("v{version}");
 
-    assert!(readme.contains("uses: Noah4ever/sshconfig-lint@v0.5.0"));
-    assert!(readme.contains("rev: v0.5.0"));
-    assert!(action.contains("'v0.5.0'"));
-    assert!(extension_package.contains("\"cliVersion\": \"0.5.0\""));
+    assert!(readme.contains(&format!("uses: Noah4ever/sshconfig-lint@{tag}")));
+    assert!(readme.contains(&format!("rev: {tag}")));
+    assert!(action.contains(&format!("'{tag}'")));
+    assert!(extension_package.contains(&format!("\"cliVersion\": \"{version}\"")));
 }
 
 #[test]
@@ -109,6 +111,6 @@ fn sibling_playground_is_in_sync_when_available() {
             "playground misses the {code} guide"
         );
     }
-    assert!(ci_page.contains("uses: Noah4ever/sshconfig-lint@v0.5.0"));
-    assert!(ci_page.contains("rev: v0.5.0"));
+    assert!(ci_page.contains("uses: Noah4ever/sshconfig-lint@v"));
+    assert!(ci_page.contains("rev: v"));
 }

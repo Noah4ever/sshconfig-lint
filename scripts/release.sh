@@ -133,9 +133,18 @@ wait_for_release() {
 bump_versions() {
   local new_version="$1"
   local extension_version="${new_version%%-*}"
+  local release_tag="v$new_version"
 
   perl -0777 -i -pe "s/(\\[package\\].*?\\nversion\\s*=\\s*)\"[^\"]+\"/\\1\"$new_version\"/s" Cargo.toml
   cargo check --quiet
+
+  RELEASE_TAG="$release_tag" perl -pi -e '
+    s#(uses: Noah4ever/sshconfig-lint@)v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?#$1$ENV{RELEASE_TAG}#g;
+    s#(rev: )v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?#$1$ENV{RELEASE_TAG}#g;
+  ' README.md
+  RELEASE_TAG="$release_tag" perl -pi -e \
+    's#\x27v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?\x27#\x27$ENV{RELEASE_TAG}\x27#g' \
+    action.yml
 
   pushd editors/vscode >/dev/null
   npm version "$extension_version" --no-git-tag-version --allow-same-version >/dev/null
@@ -232,7 +241,7 @@ if should_run bump; then
     require_clean_tree
     echo "== bump version to $version =="
     bump_versions "$version"
-    git add Cargo.toml Cargo.lock editors/vscode/package.json editors/vscode/package-lock.json
+    git add Cargo.toml Cargo.lock README.md action.yml editors/vscode/package.json editors/vscode/package-lock.json
     if git diff --cached --quiet; then
       echo "versions already match $version"
     else
