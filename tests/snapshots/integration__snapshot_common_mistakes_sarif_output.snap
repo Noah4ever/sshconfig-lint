@@ -1,0 +1,203 @@
+---
+source: tests/integration.rs
+assertion_line: 279
+expression: "sshconfig_lint::report::emit_sarif(&findings)"
+---
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "results": [
+        {
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "tests/fixtures/common_mistakes.config"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "unknown SSH client configuration directive: HosName Hint: did you mean Hostname?"
+          },
+          "ruleId": "UNKNOWN_DIRECTIVE"
+        },
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "tests/fixtures/common_mistakes.config"
+                },
+                "region": {
+                  "startLine": 2
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Protocol is deprecated or obsolete in current OpenSSH Hint: remove Protocol; current OpenSSH ignores it"
+          },
+          "ruleId": "DEPRECATED_OPTION"
+        },
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "tests/fixtures/common_mistakes.config"
+                },
+                "region": {
+                  "startLine": 5
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "ControlPersist has no effect because ControlMaster is not enabled Hint: enable ControlMaster or remove ControlPersist"
+          },
+          "ruleId": "CONTROL_PERSIST_UNUSED"
+        },
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "tests/fixtures/common_mistakes.config"
+                },
+                "region": {
+                  "startLine": 9
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "ControlPersist has no effect because ControlMaster is not enabled Hint: enable ControlMaster or remove ControlPersist"
+          },
+          "ruleId": "CONTROL_PERSIST_UNUSED"
+        },
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "tests/fixtures/common_mistakes.config"
+                },
+                "region": {
+                  "startLine": 9
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "UpdateHostKeys ask on line 8 cannot confirm changes while ControlPersist on line 9 is enabled Hint: use UpdateHostKeys yes or disable ControlPersist for this scope"
+          },
+          "ruleId": "UPDATE_HOSTKEYS_ASK_PERSIST"
+        },
+        {
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "tests/fixtures/common_mistakes.config"
+                },
+                "region": {
+                  "startLine": 11
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Match contains unbalanced quotes Hint: close the single or double quote before the end of the line"
+          },
+          "ruleId": "INVALID_SYNTAX"
+        }
+      ],
+      "tool": {
+        "driver": {
+          "informationUri": "https://sshconfig-lint.apps.thiering.org",
+          "name": "sshconfig-lint",
+          "rules": [
+            {
+              "helpUri": "https://sshconfig-lint.apps.thiering.org/en/rules/control-persist-requires-master",
+              "id": "CONTROL_PERSIST_UNUSED",
+              "name": "control-persist-requires-master",
+              "properties": {
+                "defaultConfiguration": {
+                  "level": "warning"
+                }
+              },
+              "shortDescription": {
+                "text": "ControlPersist has no effect because ControlMaster is not enabled"
+              }
+            },
+            {
+              "helpUri": "https://sshconfig-lint.apps.thiering.org/en/rules/deprecated-option",
+              "id": "DEPRECATED_OPTION",
+              "name": "deprecated-option",
+              "properties": {
+                "defaultConfiguration": {
+                  "level": "warning"
+                }
+              },
+              "shortDescription": {
+                "text": "Protocol is deprecated or obsolete in current OpenSSH"
+              }
+            },
+            {
+              "helpUri": "https://sshconfig-lint.apps.thiering.org/en/rules/invalid-syntax",
+              "id": "INVALID_SYNTAX",
+              "name": "invalid-syntax",
+              "properties": {
+                "defaultConfiguration": {
+                  "level": "error"
+                }
+              },
+              "shortDescription": {
+                "text": "Match contains unbalanced quotes"
+              }
+            },
+            {
+              "helpUri": "https://sshconfig-lint.apps.thiering.org/en/rules/unknown-directive",
+              "id": "UNKNOWN_DIRECTIVE",
+              "name": "unknown-directive",
+              "properties": {
+                "defaultConfiguration": {
+                  "level": "error"
+                }
+              },
+              "shortDescription": {
+                "text": "unknown SSH client configuration directive: HosName"
+              }
+            },
+            {
+              "helpUri": "https://sshconfig-lint.apps.thiering.org/en/rules/update-hostkeys-control-persist",
+              "id": "UPDATE_HOSTKEYS_ASK_PERSIST",
+              "name": "update-hostkeys-control-persist",
+              "properties": {
+                "defaultConfiguration": {
+                  "level": "warning"
+                }
+              },
+              "shortDescription": {
+                "text": "UpdateHostKeys ask on line 8 cannot confirm changes while ControlPersist on line 9 is enabled"
+              }
+            }
+          ],
+          "version": "0.5.0"
+        }
+      }
+    }
+  ],
+  "version": "2.1.0"
+}

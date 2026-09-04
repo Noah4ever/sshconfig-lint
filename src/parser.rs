@@ -2,7 +2,7 @@ use crate::model::{Config, Item, Line, LineKind};
 
 /// Parse a space-separated list of patterns, respecting quoted values.
 fn parse_patterns(value: &str) -> Vec<String> {
-    crate::arguments::split_arguments(value, true).unwrap_or_else(|| vec![value.to_string()])
+    crate::arguments::split_arguments(value, true).unwrap_or_default()
 }
 
 /// Parse lexed lines into a structured Config AST.

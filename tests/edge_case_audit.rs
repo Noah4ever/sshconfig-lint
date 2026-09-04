@@ -29,6 +29,11 @@ fn version_stable_openssh_syntax_is_accepted_by_openssh_and_the_linter() {
         "Host 'single quoted host'\n  User alice\n",
         "Host escaped\\ host\n  User alice\n",
         "Host example#legacy\n  User alice # comment\n",
+        "BatchMode true\n",
+        "IdentitiesOnly no\n",
+        "ControlPersist 10m\nControlMaster auto\n",
+        "Match host example.invalid\n  User alice\n",
+        "Match all\n  User alice\n",
     ];
 
     for config in accepted {
@@ -72,6 +77,8 @@ fn stable_invalid_values_are_rejected_by_openssh_and_the_linter() {
         "IPQoS 256\n",
         "AddressFamily ipv4\n",
         "StrictHostKeyChecking accept_new\n",
+        "BatchMode enabled\n",
+        "ObscureKeystrokeTiming interval:1001\n",
     ] {
         if let Some(result) = openssh_accepts(config) {
             assert!(
@@ -85,6 +92,33 @@ fn stable_invalid_values_are_rejected_by_openssh_and_the_linter() {
                 .iter()
                 .any(|finding| finding.code == "INVALID_VALUE"),
             "sshconfig-lint missed invalid OpenSSH value {config:?}: {findings:?}"
+        );
+    }
+}
+
+#[test]
+fn parser_level_errors_are_rejected_by_openssh_and_the_linter() {
+    let cases = [
+        ("User\n", "INVALID_SYNTAX"),
+        ("User \"unterminated\n", "INVALID_SYNTAX"),
+        ("Host \"\"\n", "INVALID_SYNTAX"),
+        ("Match host\n", "INVALID_MATCH"),
+        ("Match all host example.invalid\n", "INVALID_MATCH"),
+        ("Match imaginary value\n", "INVALID_MATCH"),
+        ("HosName example.invalid\n", "UNKNOWN_DIRECTIVE"),
+    ];
+
+    for (config, code) in cases {
+        if let Some(result) = openssh_accepts(config) {
+            assert!(
+                !result,
+                "local OpenSSH accepted invalid parser fixture: {config:?}"
+            );
+        }
+        let findings = lint_str_portable(config);
+        assert!(
+            findings.iter().any(|finding| finding.code == code),
+            "sshconfig-lint missed {code} for {config:?}: {findings:?}"
         );
     }
 }
@@ -130,6 +164,43 @@ fn malformed_and_adversarial_text_never_panics_the_engine_or_reporters() {
             let _ = report::emit_github(&findings);
         }));
         assert!(result.is_ok(), "engine panicked for {seed:?}");
+    }
+}
+
+#[test]
+fn deterministic_generated_inputs_never_panic_or_break_machine_output() {
+    const ALPHABET: &[char] = &[
+        'H', 'o', 's', 't', 'M', 'a', 'c', 'h', 'I', 'n', 'c', 'l', 'u', 'd', 'e', 'P', 'r', 't',
+        '2', '0', '6', '5', '5', '3', '5', ' ', '\t', '\r', '\n', '\\', '\'', '"', '#', '=', '%',
+        '*', '!', '[', ']', '~', '/', '.', '-', '+', '\0', 'é', '中', '😀',
+    ];
+
+    let mut state = 0x5eed_5eed_u64;
+    for case_index in 0..2_000 {
+        state = state
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1);
+        let length = (state as usize % 128) + (case_index % 3);
+        let mut input = String::with_capacity(length);
+        for _ in 0..length {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1);
+            input.push(ALPHABET[state as usize % ALPHABET.len()]);
+        }
+
+        let result = catch_unwind(AssertUnwindSafe(|| {
+            let findings = lint_str_portable(&input);
+            let _ = report::emit_text(&findings, false);
+            let _: serde_json::Value = serde_json::from_str(&report::emit_json(&findings)).unwrap();
+            let _: serde_json::Value =
+                serde_json::from_str(&report::emit_sarif(&findings)).unwrap();
+            let _ = report::emit_github(&findings);
+        }));
+        assert!(
+            result.is_ok(),
+            "generated case {case_index} panicked for {input:?}"
+        );
     }
 }
 

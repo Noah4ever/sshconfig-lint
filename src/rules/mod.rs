@@ -15,6 +15,10 @@ pub trait Rule {
 pub fn run_all(config: &Config) -> Vec<Finding> {
     let rules: Vec<Box<dyn Rule>> = vec![
         Box::new(implementations::InvalidDirectiveValue),
+        Box::new(implementations::InvalidSyntax),
+        Box::new(implementations::InvalidMatchCondition),
+        Box::new(implementations::UnknownDirective),
+        Box::new(implementations::DeprecatedOption),
         Box::new(implementations::DuplicateHost),
         Box::new(implementations::IdentityFileExists),
         Box::new(implementations::WildcardHostOrder),
@@ -28,6 +32,8 @@ pub fn run_all(config: &Config) -> Vec<Finding> {
         Box::new(implementations::CertificateFileExists),
         Box::new(implementations::LocalCommandEnabled),
         Box::new(implementations::InvalidPercentToken),
+        Box::new(implementations::ControlPersistRequiresMaster),
+        Box::new(implementations::UpdateHostKeysControlPersist),
     ];
 
     let mut findings = Vec::new();
@@ -44,6 +50,10 @@ pub fn run_all(config: &Config) -> Vec<Finding> {
 pub fn run_portable(config: &Config) -> Vec<Finding> {
     let rules: Vec<Box<dyn Rule>> = vec![
         Box::new(implementations::InvalidDirectiveValue),
+        Box::new(implementations::InvalidSyntax),
+        Box::new(implementations::InvalidMatchCondition),
+        Box::new(implementations::UnknownDirective),
+        Box::new(implementations::DeprecatedOption),
         Box::new(implementations::DuplicateHost),
         Box::new(implementations::WildcardHostOrder),
         Box::new(implementations::DeprecatedWeakAlgorithms),
@@ -54,6 +64,8 @@ pub fn run_portable(config: &Config) -> Vec<Finding> {
         Box::new(implementations::ProxyCommandJumpConflict),
         Box::new(implementations::LocalCommandEnabled),
         Box::new(implementations::InvalidPercentToken),
+        Box::new(implementations::ControlPersistRequiresMaster),
+        Box::new(implementations::UpdateHostKeysControlPersist),
     ];
 
     let mut findings = Vec::new();

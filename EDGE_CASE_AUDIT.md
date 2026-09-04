@@ -1,8 +1,8 @@
 # OpenSSH edge-case audit
 
-This audit was performed on September 2, 2026 before the v1 release candidate.
+This audit was performed on September 2 and extended on September 3, 2026 before the v1 release candidate.
 It used OpenSSH portable source commit
-`8e964781e441bfbef2d183ad0f327951715cea22` and the local OpenSSH 10.3 client.
+`769728b835f19a2d5cb69062f21c8a30fbdca9a1` and the local OpenSSH 10.3 client.
 The executable comparison uses `ssh -G -F` and never opens a network
 connection.
 
@@ -25,6 +25,10 @@ Primary references:
 - ASCII-insensitive directive names and Host matching
 - Unicode content and UTF-16 LSP range calculation
 - malformed and unbalanced quotes without panics
+- missing and empty arguments as parser errors
+- all 128 keywords in the current portable OpenSSH client parser
+- unknown options, `IgnoreUnknown` ordering, wildcards, negation, and case folding
+- supported `Match` criteria, required values, equals forms, and isolated `all`
 
 `tests/edge_case_audit.rs` compares version-stable accepted and rejected values
 against the installed OpenSSH client when it is available. The test skips only
@@ -53,6 +57,10 @@ parser tests.
   overflow
 - OpenSSH time units, compound durations, fractional seconds, and overflow
 - port, mask, DSCP, and enumerated-value boundaries
+- all current boolean flags, `RequiredRSASize`, `ControlPersist`,
+  `ForwardX11Timeout`, and `ObscureKeystrokeTiming` boundaries
+- ineffective `ControlPersist` and its documented interaction with
+  `UpdateHostKeys ask`
 - quoted security values and quoted comma-separated algorithm lists
 - JSON field types, deterministic ordering, SARIF 2.1.0, URI encoding, GitHub
   escaping, and text output
@@ -67,8 +75,9 @@ rejects these values because silently truncating a likely typo is unsafe.
 ## Explicit boundaries
 
 sshconfig-lint is a semantic linter, not a replacement implementation of the
-entire OpenSSH parser. Version-specific unknown directives, every forwarding
-grammar, and connection-dependent expansion are not guessed. Use
+entire OpenSSH parser. Every forwarding grammar and connection-dependent
+expansion are not guessed. The known-option table targets the audited current
+portable OpenSSH release and recognises common vendor extensions. Use
 `ssh -G host -F path` when the exact installed OpenSSH version and a concrete
 host must be evaluated.
 

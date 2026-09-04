@@ -1,0 +1,11 @@
+---
+source: tests/integration.rs
+assertion_line: 267
+expression: "sshconfig_lint::report::emit_text(&findings, false)"
+---
+tests/fixtures/common_mistakes.config:line 1: [error] UNKNOWN_DIRECTIVE (unknown-directive) unknown SSH client configuration directive: HosName (hint: did you mean Hostname?)
+tests/fixtures/common_mistakes.config:line 2: [warning] DEPRECATED_OPTION (deprecated-option) Protocol is deprecated or obsolete in current OpenSSH (hint: remove Protocol; current OpenSSH ignores it)
+tests/fixtures/common_mistakes.config:line 5: [warning] CONTROL_PERSIST_UNUSED (control-persist-requires-master) ControlPersist has no effect because ControlMaster is not enabled (hint: enable ControlMaster or remove ControlPersist)
+tests/fixtures/common_mistakes.config:line 9: [warning] CONTROL_PERSIST_UNUSED (control-persist-requires-master) ControlPersist has no effect because ControlMaster is not enabled (hint: enable ControlMaster or remove ControlPersist)
+tests/fixtures/common_mistakes.config:line 9: [warning] UPDATE_HOSTKEYS_ASK_PERSIST (update-hostkeys-control-persist) UpdateHostKeys ask on line 8 cannot confirm changes while ControlPersist on line 9 is enabled (hint: use UpdateHostKeys yes or disable ControlPersist for this scope)
+tests/fixtures/common_mistakes.config:line 11: [error] INVALID_SYNTAX (invalid-syntax) Match contains unbalanced quotes (hint: close the single or double quote before the end of the line)

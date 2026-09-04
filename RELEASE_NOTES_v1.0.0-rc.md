@@ -12,13 +12,19 @@ documentation links.
 - Detect negated-only Host blocks, ProxyCommand and ProxyJump conflicts,
   disabled LocalCommand directives, invalid percent tokens, unreadable
   RevokedHostKeys files, and missing CertificateFile paths.
+- Catch missing arguments, unbalanced quotes, unknown and deprecated options,
+  and malformed Match conditions before they reach SSH.
+- Validate current boolean switches, `RequiredRSASize`, connection-persistence
+  settings, X11 timeouts, and keystroke-obscuring intervals.
+- Explain ineffective `ControlPersist` and its conflict with
+  `UpdateHostKeys ask` using dedicated stable rule codes.
 - Publish diagnostics from nested Include files on the correct LSP document.
 - Bound Include expansion at OpenSSH's depth limit and report `INCLUDE_DEPTH`
   instead of continuing recursively.
 - Match OpenSSH argument handling for quotes, escaped spaces, hashes inside
   tokens, and case-insensitive Host matching.
 - Keep text, JSON, SARIF, GitHub annotations, LSP, the VS Code rule guide, and
-  the browser documentation aligned across 19 public diagnostic codes.
+  the browser documentation aligned across 25 public diagnostic codes.
 
 ## Reliability work
 

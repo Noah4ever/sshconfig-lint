@@ -23,6 +23,12 @@ const publicRuleCodes = [
   'MISSING_CERTIFICATE',
   'LOCAL_COMMAND_DISABLED',
   'INVALID_TOKEN',
+  'UNKNOWN_DIRECTIVE',
+  'DEPRECATED_OPTION',
+  'CONTROL_PERSIST_UNUSED',
+  'UPDATE_HOSTKEYS_ASK_PERSIST',
+  'INVALID_SYNTAX',
+  'INVALID_MATCH',
 ];
 
 test('offers a guide for every public diagnostic', () => {

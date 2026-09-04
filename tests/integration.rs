@@ -262,6 +262,69 @@ fn every_semantic_trap_has_the_stable_json_contract() {
 }
 
 #[test]
+fn snapshot_common_mistakes_text_output() {
+    let findings = lint_file(Path::new("tests/fixtures/common_mistakes.config")).unwrap();
+    insta::assert_snapshot!(sshconfig_lint::report::emit_text(&findings, false));
+}
+
+#[test]
+fn snapshot_common_mistakes_json_output() {
+    let findings = lint_file(Path::new("tests/fixtures/common_mistakes.config")).unwrap();
+    insta::assert_snapshot!(sshconfig_lint::report::emit_json(&findings));
+}
+
+#[test]
+fn snapshot_common_mistakes_sarif_output() {
+    let findings = lint_file(Path::new("tests/fixtures/common_mistakes.config")).unwrap();
+    insta::assert_snapshot!(sshconfig_lint::report::emit_sarif(&findings));
+}
+
+#[test]
+fn snapshot_common_mistakes_github_output() {
+    let findings = lint_file(Path::new("tests/fixtures/common_mistakes.config")).unwrap();
+    insta::assert_snapshot!(sshconfig_lint::report::emit_github(&findings));
+}
+
+#[test]
+fn every_common_mistake_has_the_stable_json_contract() {
+    let findings = lint_file(Path::new("tests/fixtures/common_mistakes.config")).unwrap();
+    let output: serde_json::Value =
+        serde_json::from_str(&sshconfig_lint::report::emit_json(&findings)).unwrap();
+    let diagnostics = output.as_array().unwrap();
+    let expected = [
+        ("UNKNOWN_DIRECTIVE", "error", "unknown-directive"),
+        ("DEPRECATED_OPTION", "warning", "deprecated-option"),
+        (
+            "CONTROL_PERSIST_UNUSED",
+            "warning",
+            "control-persist-requires-master",
+        ),
+        (
+            "UPDATE_HOSTKEYS_ASK_PERSIST",
+            "warning",
+            "update-hostkeys-control-persist",
+        ),
+    ];
+
+    for (code, severity, rule) in expected {
+        let diagnostic = diagnostics
+            .iter()
+            .find(|diagnostic| diagnostic["code"] == code)
+            .unwrap_or_else(|| panic!("missing {code}"));
+        assert_eq!(diagnostic["severity"], severity);
+        assert_eq!(diagnostic["rule"], rule);
+        assert!(diagnostic["line"].as_u64().is_some_and(|line| line > 0));
+        assert_eq!(diagnostic["file"], "tests/fixtures/common_mistakes.config");
+        assert!(!diagnostic["message"].as_str().unwrap().is_empty());
+        assert!(!diagnostic["hint"].as_str().unwrap().is_empty());
+        assert_eq!(
+            diagnostic["documentation"],
+            format!("https://sshconfig-lint.apps.thiering.org/en/rules/{rule}")
+        );
+    }
+}
+
+#[test]
 fn fixture_multiple_patterns() {
     let path = Path::new("tests/fixtures/multiple_patterns.config");
     let findings = lint_file(path).expect("should read fixture");

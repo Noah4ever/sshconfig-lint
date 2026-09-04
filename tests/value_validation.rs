@@ -51,9 +51,7 @@ fn port_accepts_boundary_and_common_values() {
 
 #[test]
 fn port_rejects_out_of_range_and_non_integer_values() {
-    for value in [
-        "0", "65536", "-1", "22.5", "ssh", "22 extra", "\"\"", "\"22", "",
-    ] {
+    for value in ["0", "65536", "-1", "22.5", "ssh", "22 extra"] {
         assert_invalid(
             "Port",
             value,
@@ -102,9 +100,6 @@ fn integer_directives_reject_invalid_values_and_overflow() {
         "1.5",
         "none",
         "1 2",
-        "\"\"",
-        "\"1",
-        "",
         "2147483648",
         "999999999999999999999",
     ] {
@@ -122,9 +117,6 @@ fn integer_directives_reject_invalid_values_and_overflow() {
             "1.5",
             "none",
             "1 2",
-            "\"\"",
-            "\"1",
-            "",
             "2147483648",
             "999999999999999999999",
         ] {
@@ -140,7 +132,7 @@ fn integer_directives_reject_invalid_values_and_overflow() {
 
 #[test]
 fn time_directives_accept_openssh_time_formats() {
-    for directive in ["ConnectTimeout", "ServerAliveInterval"] {
+    for directive in ["ConnectTimeout", "ServerAliveInterval", "ForwardX11Timeout"] {
         for value in [
             "0",
             "15",
@@ -164,7 +156,7 @@ fn time_directives_accept_openssh_time_formats() {
 
 #[test]
 fn time_directives_reject_bad_syntax_negatives_and_overflow() {
-    for directive in ["ConnectTimeout", "ServerAliveInterval"] {
+    for directive in ["ConnectTimeout", "ServerAliveInterval", "ForwardX11Timeout"] {
         for value in [
             "-1",
             "+1",
@@ -174,9 +166,6 @@ fn time_directives_reject_bad_syntax_negatives_and_overflow() {
             "1e3",
             "1m30x",
             "1m 2m",
-            "\"\"",
-            "\"1m",
-            "",
             "2147483648",
             "999999999999999999999w",
         ] {
@@ -187,6 +176,153 @@ fn time_directives_reject_bad_syntax_negatives_and_overflow() {
                 "use seconds, a duration such as 1m30s, or none",
             );
         }
+    }
+}
+
+#[test]
+fn control_persist_accepts_flags_and_time_values() {
+    for value in ["yes", "true", "no", "false", "0", "10m", "1.5s", "\"1h\""] {
+        let findings = invalid_value_findings(&format!("ControlPersist {value}"));
+        assert!(
+            findings.is_empty(),
+            "ControlPersist {value} should be valid, got: {findings:?}"
+        );
+    }
+}
+
+#[test]
+fn control_persist_rejects_invalid_flags_times_and_arguments() {
+    for value in ["none", "-1", "+1", "1.5m", "maybe", "1m 2m"] {
+        assert_invalid(
+            "ControlPersist",
+            value,
+            "yes, no, or a non-negative time value",
+            "use yes, no, seconds, or a duration such as 10m",
+        );
+    }
+}
+
+#[test]
+fn required_rsa_size_only_accepts_documented_raised_limits() {
+    for value in ["1024", "+2048", "4096", "2147483647", "\"3072\""] {
+        let findings = invalid_value_findings(&format!("RequiredRSASize {value}"));
+        assert!(
+            findings.is_empty(),
+            "RequiredRSASize {value} should be valid, got: {findings:?}"
+        );
+    }
+
+    for value in [
+        "0",
+        "768",
+        "1023",
+        "-1",
+        "2048.5",
+        "none",
+        "2048 extra",
+        "2147483648",
+    ] {
+        assert_invalid(
+            "RequiredRSASize",
+            value,
+            "an integer from 1024 to 2147483647",
+            "use 1024 or a stronger minimum such as 2048 or 3072",
+        );
+    }
+}
+
+const BOOLEAN_FLAG_DIRECTIVES: &[&str] = &[
+    "BatchMode",
+    "CanonicalizeFallbackLocal",
+    "CheckHostIP",
+    "ClearAllForwardings",
+    "EnableEscapeCommandline",
+    "EnableSSHKeysign",
+    "ExitOnForwardFailure",
+    "ForkAfterAuthentication",
+    "ForwardX11",
+    "ForwardX11Trusted",
+    "GatewayPorts",
+    "GSSAPIAuthentication",
+    "GSSAPIDelegateCredentials",
+    "HashKnownHosts",
+    "HostbasedAuthentication",
+    "IdentitiesOnly",
+    "KbdInteractiveAuthentication",
+    "NoHostAuthenticationForLocalhost",
+    "PasswordAuthentication",
+    "PermitLocalCommand",
+    "ProxyUseFdpass",
+    "StdinNull",
+    "StreamLocalBindUnlink",
+    "TCPKeepAlive",
+    "VisualHostKey",
+];
+
+#[test]
+fn boolean_flags_accept_all_openssh_spellings_case_insensitively() {
+    for directive in BOOLEAN_FLAG_DIRECTIVES {
+        for value in ["yes", "no", "true", "false", "YES", "False", "\"yes\""] {
+            let findings = invalid_value_findings(&format!("{directive} {value}"));
+            assert!(
+                findings.is_empty(),
+                "{directive} {value} should be valid, got: {findings:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn boolean_flags_reject_common_near_misses_and_extra_values() {
+    for directive in BOOLEAN_FLAG_DIRECTIVES {
+        for value in ["on", "off", "enabled", "1", "maybe", "yes no"] {
+            assert_invalid(
+                directive,
+                value,
+                "one of: true, false, yes, no",
+                "use yes or no; true and false are also accepted",
+            );
+        }
+    }
+}
+
+#[test]
+fn obscure_keystroke_timing_accepts_flags_and_documented_interval_range() {
+    for value in [
+        "yes",
+        "no",
+        "true",
+        "false",
+        "interval:1",
+        "interval:20",
+        "interval:1000",
+        "\"interval:50\"",
+    ] {
+        let findings = invalid_value_findings(&format!("ObscureKeystrokeTiming {value}"));
+        assert!(
+            findings.is_empty(),
+            "ObscureKeystrokeTiming {value} should be valid, got: {findings:?}"
+        );
+    }
+}
+
+#[test]
+fn obscure_keystroke_timing_rejects_invalid_and_out_of_range_intervals() {
+    for value in [
+        "interval:0",
+        "interval:1001",
+        "interval:-1",
+        "interval:1.5",
+        "interval:",
+        "interval:20 extra",
+        "auto",
+    ] {
+        assert_invalid(
+            "ObscureKeystrokeTiming",
+            value,
+            "yes, no, or interval:1 through interval:1000",
+            "use yes, no, or an interval in milliseconds such as interval:20",
+        );
     }
 }
 
@@ -212,9 +348,6 @@ fn stream_local_bind_mask_rejects_partial_non_octal_and_large_values() {
         "0o177",
         "1.5",
         "0177 0777",
-        "\"\"",
-        "\"0177",
-        "",
     ] {
         assert_invalid(
             "StreamLocalBindMask",
@@ -288,7 +421,6 @@ fn ipqos_rejects_bad_names_ranges_and_argument_counts() {
         "1.5",
         "0xff",
         "bogus",
-        "",
         "af21 bogus",
         "af21 cs1 ef",
         "999999999999999999999",
@@ -477,6 +609,18 @@ const ENUM_CASES: &[(&str, &[&str], &str, &str)] = &[
         "one of: true, false, yes, no, unbound, host-bound",
         "use yes, no, unbound, or host-bound; true and false are also accepted",
     ),
+    (
+        "Compression",
+        &["yes", "no"],
+        "one of: yes, no",
+        "use yes or no",
+    ),
+    (
+        "WarnWeakCrypto",
+        &["true", "false", "yes", "no", "no-pq-kex"],
+        "one of: true, false, yes, no, no-pq-kex",
+        "use yes, no, or no-pq-kex; true and false are also accepted",
+    ),
 ];
 
 #[test]
@@ -499,9 +643,9 @@ fn enumerated_directives_accept_every_openssh_value() {
 }
 
 #[test]
-fn enumerated_directives_reject_unknown_empty_and_extra_values() {
+fn enumerated_directives_reject_unknown_and_extra_values() {
     for (directive, _, expected, hint) in ENUM_CASES {
-        for value in ["bogus", "", "yes extra", "\"\"", "\"yes"] {
+        for value in ["bogus", "yes extra"] {
             assert_invalid(directive, value, expected, hint);
         }
     }
@@ -522,6 +666,8 @@ fn enumerated_directives_reject_near_miss_spellings_and_out_of_range_names() {
         ("LogLevel", "DEBUG4"),
         ("SyslogFacility", "LOCAL8"),
         ("PubkeyAuthentication", "bound"),
+        ("Compression", "auto"),
+        ("WarnWeakCrypto", "pq-only"),
     ];
 
     for (directive, value) in cases {

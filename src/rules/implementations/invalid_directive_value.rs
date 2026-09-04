@@ -7,6 +7,8 @@ use super::value_arguments::parse_value_arguments;
 enum ValueConstraint {
     UnsignedIntegerRange { min: u64, max: u64 },
     NonNegativeTimeOrNone,
+    YesNoOrTime,
+    ObscureKeystrokeTiming,
     OctalMask,
     IpQos,
     AllowedValues(&'static [&'static str]),
@@ -26,6 +28,27 @@ impl ValueConstraint {
             },
             Self::NonNegativeTimeOrNone => match arguments.as_slice() {
                 [argument] => argument == "none" || parse_time_seconds(argument).is_some(),
+                _ => false,
+            },
+            Self::YesNoOrTime => match arguments.as_slice() {
+                [argument] => {
+                    matches!(
+                        argument.to_ascii_lowercase().as_str(),
+                        "yes" | "true" | "no" | "false"
+                    ) || parse_time_seconds(argument).is_some()
+                }
+                _ => false,
+            },
+            Self::ObscureKeystrokeTiming => match arguments.as_slice() {
+                [argument] => {
+                    matches!(
+                        argument.to_ascii_lowercase().as_str(),
+                        "yes" | "true" | "no" | "false"
+                    ) || argument
+                        .strip_prefix("interval:")
+                        .and_then(parse_unsigned_decimal)
+                        .is_some_and(|number| (1..=1_000).contains(&number))
+                }
                 _ => false,
             },
             Self::OctalMask => match arguments.as_slice() {
@@ -54,7 +77,7 @@ fn parse_unsigned_decimal(value: &str) -> Option<u64> {
     digits.parse().ok()
 }
 
-fn parse_time_seconds(value: &str) -> Option<u64> {
+pub(super) fn parse_time_seconds(value: &str) -> Option<u64> {
     const MAX_SECONDS: f64 = i32::MAX as f64;
 
     if value.is_empty() || !value.is_ascii() {
@@ -182,6 +205,41 @@ struct DirectiveValueSpec {
     hint: &'static str,
 }
 
+const BOOLEAN_DIRECTIVES: &[&str] = &[
+    "BatchMode",
+    "CanonicalizeFallbackLocal",
+    "CheckHostIP",
+    "ClearAllForwardings",
+    "EnableEscapeCommandline",
+    "EnableSSHKeysign",
+    "ExitOnForwardFailure",
+    "ForkAfterAuthentication",
+    "ForwardX11",
+    "ForwardX11Trusted",
+    "GatewayPorts",
+    "GSSAPIAuthentication",
+    "GSSAPIDelegateCredentials",
+    "HashKnownHosts",
+    "HostbasedAuthentication",
+    "IdentitiesOnly",
+    "KbdInteractiveAuthentication",
+    "NoHostAuthenticationForLocalhost",
+    "PasswordAuthentication",
+    "PermitLocalCommand",
+    "ProxyUseFdpass",
+    "StdinNull",
+    "StreamLocalBindUnlink",
+    "TCPKeepAlive",
+    "VisualHostKey",
+];
+
+const BOOLEAN_SPEC: DirectiveValueSpec = DirectiveValueSpec {
+    directive: "boolean option",
+    constraint: ValueConstraint::AllowedValues(&["true", "false", "yes", "no"]),
+    expected: "one of: true, false, yes, no",
+    hint: "use yes or no; true and false are also accepted",
+};
+
 const DIRECTIVE_VALUE_SPECS: &[DirectiveValueSpec] = &[
     DirectiveValueSpec {
         directive: "Port",
@@ -203,6 +261,12 @@ const DIRECTIVE_VALUE_SPECS: &[DirectiveValueSpec] = &[
     },
     DirectiveValueSpec {
         directive: "ConnectTimeout",
+        constraint: ValueConstraint::NonNegativeTimeOrNone,
+        expected: "a non-negative time value or none",
+        hint: "use seconds, a duration such as 1m30s, or none",
+    },
+    DirectiveValueSpec {
+        directive: "ForwardX11Timeout",
         constraint: ValueConstraint::NonNegativeTimeOrNone,
         expected: "a non-negative time value or none",
         hint: "use seconds, a duration such as 1m30s, or none",
@@ -239,6 +303,15 @@ const DIRECTIVE_VALUE_SPECS: &[DirectiveValueSpec] = &[
         },
         expected: "an integer from 0 to 2147483647",
         hint: "use a non-negative integer no greater than 2147483647",
+    },
+    DirectiveValueSpec {
+        directive: "RequiredRSASize",
+        constraint: ValueConstraint::UnsignedIntegerRange {
+            min: 1_024,
+            max: i32::MAX as u64,
+        },
+        expected: "an integer from 1024 to 2147483647",
+        hint: "use 1024 or a stronger minimum such as 2048 or 3072",
     },
     DirectiveValueSpec {
         directive: "StreamLocalBindMask",
@@ -279,6 +352,18 @@ const DIRECTIVE_VALUE_SPECS: &[DirectiveValueSpec] = &[
         ]),
         expected: "one of: true, false, yes, no, auto, ask, autoask",
         hint: "use yes, no, auto, ask, or autoask; true and false are also accepted",
+    },
+    DirectiveValueSpec {
+        directive: "ControlPersist",
+        constraint: ValueConstraint::YesNoOrTime,
+        expected: "yes, no, or a non-negative time value",
+        hint: "use yes, no, seconds, or a duration such as 10m",
+    },
+    DirectiveValueSpec {
+        directive: "ObscureKeystrokeTiming",
+        constraint: ValueConstraint::ObscureKeystrokeTiming,
+        expected: "yes, no, or interval:1 through interval:1000",
+        hint: "use yes, no, or an interval in milliseconds such as interval:20",
     },
     DirectiveValueSpec {
         directive: "CanonicalizeHostname",
@@ -355,6 +440,18 @@ const DIRECTIVE_VALUE_SPECS: &[DirectiveValueSpec] = &[
         expected: "one of: true, false, yes, no, unbound, host-bound",
         hint: "use yes, no, unbound, or host-bound; true and false are also accepted",
     },
+    DirectiveValueSpec {
+        directive: "Compression",
+        constraint: ValueConstraint::AllowedValues(&["yes", "no"]),
+        expected: "one of: yes, no",
+        hint: "use yes or no",
+    },
+    DirectiveValueSpec {
+        directive: "WarnWeakCrypto",
+        constraint: ValueConstraint::AllowedValues(&["true", "false", "yes", "no", "no-pq-kex"]),
+        expected: "one of: true, false, yes, no, no-pq-kex",
+        hint: "use yes, no, or no-pq-kex; true and false are also accepted",
+    },
 ];
 
 /// Errors when a directive has a value OpenSSH does not accept.
@@ -378,10 +475,24 @@ fn collect_invalid_value_findings(items: &[Item], findings: &mut Vec<Finding>) {
             Item::Directive {
                 key, value, span, ..
             } => {
-                let Some(spec) = DIRECTIVE_VALUE_SPECS
+                let Some(arguments) = parse_value_arguments(value) else {
+                    continue;
+                };
+                if arguments.is_empty() || arguments.iter().any(String::is_empty) {
+                    continue;
+                }
+
+                let is_boolean = BOOLEAN_DIRECTIVES
+                    .iter()
+                    .any(|directive| key.eq_ignore_ascii_case(directive));
+                let spec = if is_boolean {
+                    &BOOLEAN_SPEC
+                } else if let Some(spec) = DIRECTIVE_VALUE_SPECS
                     .iter()
                     .find(|spec| key.eq_ignore_ascii_case(spec.directive))
-                else {
+                {
+                    spec
+                } else {
                     continue;
                 };
                 if spec.constraint.accepts(value) {
@@ -394,7 +505,9 @@ fn collect_invalid_value_findings(items: &[Item], findings: &mut Vec<Finding>) {
                         "INVALID_VALUE",
                         format!(
                             "invalid value '{}' for {}; expected {}",
-                            value, spec.directive, spec.expected
+                            value,
+                            if is_boolean { key } else { spec.directive },
+                            spec.expected
                         ),
                         span.clone(),
                     )

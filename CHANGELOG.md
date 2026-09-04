@@ -25,6 +25,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 - Test verified VS Code binary downloads, checksum rejection, custom paths, and offline reuse
 - Bound Include expansion to OpenSSH's maximum nesting depth of 16
 - Add OpenSSH differential fixtures and adversarial no-panic coverage
+- Detect misspelled and unknown directives while respecting earlier `IgnoreUnknown` patterns
+- Report current OpenSSH options that are deprecated, obsolete, or ignored
+- Report missing arguments, empty arguments, unbalanced quotes, and invalid `Match` conditions
+- Warn when `ControlPersist` cannot work without any possible `ControlMaster`
+- Warn when `UpdateHostKeys ask` conflicts with enabled `ControlPersist` in the same scope
+- Validate `ForwardX11Timeout`, `RequiredRSASize`, `ControlPersist`, 25 boolean switches, `Compression`, `WarnWeakCrypto`, and the `ObscureKeystrokeTiming` interval range
 
 ### Changed
 
@@ -48,6 +54,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 - Detect insecure values and weak algorithm lists when their arguments are quoted
 - Percent-encode reserved and non-ASCII characters in SARIF artifact URIs
 - Recognize filesystem-dependent `Key=Value` directives in untitled LSP buffers
+- Keep the browser checker aligned with OpenSSH quoting, escaping, comments, equals forms, directive names, values, and Host case handling
 
 ## [0.5.0] - 2026-08-28
 

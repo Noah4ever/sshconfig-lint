@@ -134,7 +134,7 @@ Suggested tag: `checkpoint/06-integrations`
 
 The Action smoke workflow exercises the repository's current composite Action
 with the published version-matched binary on Linux, macOS, and Windows. The
-documentation contract keeps all 19 public rule codes aligned across the core
+documentation contract keeps all 25 public rule codes aligned across the core
 README, VS Code picker, and the playground when both repositories are checked
 out next to each other. The public Marketplace listing was verified on
 September 2, 2026.
@@ -156,7 +156,11 @@ Suggested tag: `checkpoint/07-v1-release-candidate`
 - [x] The macOS release path has been rehearsed without publishing
 - [x] Changelog and release notes are complete
 
-The engineering release-candidate gates were verified on September 2, 2026.
+The original engineering release-candidate gates were verified on September 2,
+2026. A second upstream OpenSSH audit on September 3 added parser-level syntax,
+unknown-option, deprecated-option, Match-condition, and connection-sharing
+diagnostics plus broader value validation. All engineering gates must pass
+again after those changes before a v1 tag is considered.
 The [full test workflow](https://github.com/Noah4ever/sshconfig-lint/actions/runs/33651102591),
 the [Action smoke test](https://github.com/Noah4ever/sshconfig-lint/actions/runs/33651342137),
 and the [eight-platform release rehearsal](https://github.com/Noah4ever/sshconfig-lint/actions/runs/33650554987)
