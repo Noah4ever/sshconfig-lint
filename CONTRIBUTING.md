@@ -15,15 +15,20 @@ Requires Rust 1.85 or newer.
 1. Fork and create a branch
 2. Write a failing test for what you want to change
 3. Implement until the test passes
-4. Run the full suite: `cargo test --all`
-5. Check formatting and lints: `cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings`
+4. Run the full suite: `cargo test --all --locked`
+5. Check formatting and lints: `cargo fmt --all -- --check && cargo clippy --all-targets --all-features --locked -- -D warnings`
 6. Open a PR
 
 ## Adding a rule
 
-Implement the `Rule` trait in `src/rules/basic.rs`:
+Each built-in rule has its own file in `src/rules/implementations/`. Start by copying the closest existing rule, then rename the type, rule name, code, message, hint, and tests. Do not add new implementations to `src/rules/basic.rs`; that module only preserves the pre-v1 public import path.
+
+For example, create `src/rules/implementations/my_rule.rs` and implement the `Rule` trait:
 
 ```rust
+use crate::model::{Config, Finding};
+use crate::rules::Rule;
+
 pub struct MyRule;
 
 impl Rule for MyRule {
@@ -41,22 +46,38 @@ impl Rule for MyRule {
 }
 ```
 
+Declare and export it from `src/rules/implementations/mod.rs`:
+
+```rust
+mod my_rule;
+pub use my_rule::MyRule;
+```
+
 Register it in `src/rules/mod.rs` inside `run_all()`:
 
 ```rust
-Box::new(MyRule),
+Box::new(implementations::MyRule),
 ```
 
-Write tests in the same file:
+Also register it in `run_portable()` when it only needs the current document contents. Filesystem-dependent checks, such as resolving `Include` or checking key files, belong in `run_all()` only so editors do not report misleading results for unsaved documents.
+
+Put focused unit tests in the implementation file or in `src/rules/implementations/tests.rs`:
 
 ```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
 #[test]
 fn my_rule_catches_the_thing() {
     let config = Config { items: vec![/* ... */] };
     let findings = MyRule.check(&config);
     assert_eq!(findings.len(), 1);
 }
+}
 ```
+
+Add integration tests in `tests/` for CLI output or public diagnostic contracts. Rule codes, severities, messages, hints, and documentation URLs are public interfaces, so update the README rule table, VS Code rule mapping, website rule guide, snapshots, and changelog when they change.
 
 ## Commit messages
 
@@ -111,7 +132,9 @@ Output: findings (errors/warnings/info)
 | `src/lexer.rs` | Tokenize raw SSH config lines |
 | `src/parser.rs` | Parse tokens into Config AST |
 | `src/resolve.rs` | Expand & resolve Include directives |
-| `src/rules/` | Rule implementations |
+| `src/rules/mod.rs` | Rule trait and rule registries |
+| `src/rules/implementations/` | One file per built-in rule |
+| `src/rules/basic.rs` | Compatibility exports for the pre-v1 module path |
 | `src/report.rs` | Format findings for output |
 | `tests/` | Integration tests & fixtures |
 

@@ -41,6 +41,17 @@ fn read(path: impl AsRef<Path>) -> String {
 }
 
 #[test]
+fn contributing_uses_the_one_file_per_rule_layout() {
+    let contributing = read(repository_root().join("CONTRIBUTING.md"));
+
+    assert!(contributing.contains("src/rules/implementations/my_rule.rs"));
+    assert!(contributing.contains("src/rules/implementations/mod.rs"));
+    assert!(contributing.contains("src/rules/implementations/tests.rs"));
+    assert!(contributing.contains("run_portable()"));
+    assert!(!contributing.contains("Implement the `Rule` trait in `src/rules/basic.rs`"));
+}
+
+#[test]
 fn readme_and_vscode_offer_every_public_rule_guide() {
     let root = repository_root();
     let readme = read(root.join("README.md"));
