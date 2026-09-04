@@ -159,9 +159,13 @@ Suggested tag: `checkpoint/07-v1-release-candidate`
 The original engineering release-candidate gates were verified on September 2,
 2026. A second upstream OpenSSH audit on September 3 added parser-level syntax,
 unknown-option, deprecated-option, Match-condition, and connection-sharing
-diagnostics plus broader value validation. All engineering gates must pass
-again after those changes before a v1 tag is considered.
-The [full test workflow](https://github.com/Noah4ever/sshconfig-lint/actions/runs/33651102591),
+diagnostics plus broader value validation. On September 4, the complete suite
+passed again on Linux, macOS, Windows, and the declared Rust 1.85 minimum in the
+[full test workflow](https://github.com/Noah4ever/sshconfig-lint/actions/runs/33855628386).
+An isolated version bump also built and tested the project as `1.0.0`, produced
+a 10-file VSIX, and completed `cargo publish --dry-run`. That rehearsal exposed
+and fixed hard-coded documentation and SARIF snapshot versions before release.
+The earlier [full test workflow](https://github.com/Noah4ever/sshconfig-lint/actions/runs/33651102591),
 the [Action smoke test](https://github.com/Noah4ever/sshconfig-lint/actions/runs/33651342137),
 and the [eight-platform release rehearsal](https://github.com/Noah4ever/sshconfig-lint/actions/runs/33650554987)
 passed. v0.5.0 was published on August 28, 2026, so the four-week feedback gate
