@@ -162,10 +162,10 @@ fn collect(items: &[Item], ignored_patterns: &mut Vec<String>, findings: &mut Ve
     for item in items {
         match item {
             Item::Directive { key, value, .. } if key.eq_ignore_ascii_case("IgnoreUnknown") => {
-                if let Some(arguments) = parse_value_arguments(value)
-                    && let [argument] = arguments.as_slice()
-                {
-                    ignored_patterns.push(argument.to_ascii_lowercase());
+                if let Some(arguments) = parse_value_arguments(value) {
+                    if let [argument] = arguments.as_slice() {
+                        ignored_patterns.push(argument.to_ascii_lowercase());
+                    }
                 }
             }
             Item::Directive { key, span, .. } if !is_known(key) => {
