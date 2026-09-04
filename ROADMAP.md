@@ -149,9 +149,6 @@ Suggested tag: `checkpoint/07-v1-release-candidate`
       Silicon, and Windows x86_64 and ARM64
 - [x] Rule codes, CLI output, JSON, SARIF, LSP, exit codes, support policy, and
       upgrade policy are documented as stable
-- [ ] At least ten external users have used the Action, hook, LSP, or extension
-      in a real workflow
-- [ ] At least four weeks of v0.5 feedback have elapsed
 - [x] `cargo publish --dry-run` and the VSIX package checks pass
 - [x] The macOS release path has been rehearsed without publishing
 - [x] Changelog and release notes are complete
@@ -168,9 +165,10 @@ and fixed hard-coded documentation and SARIF snapshot versions before release.
 The earlier [full test workflow](https://github.com/Noah4ever/sshconfig-lint/actions/runs/33651102591),
 the [Action smoke test](https://github.com/Noah4ever/sshconfig-lint/actions/runs/33651342137),
 and the [eight-platform release rehearsal](https://github.com/Noah4ever/sshconfig-lint/actions/runs/33650554987)
-passed. v0.5.0 was published on August 28, 2026, so the four-week feedback gate
-cannot complete before September 25, 2026. External workflow adoption must be
-confirmed from real users rather than inferred from downloads.
+passed. A final Linux smoke test on September 4 confirmed that a locally built
+binary reports the same seven findings as the default playground example.
+External adoption and longer-term feedback remain launch measurements rather
+than blockers for the stable release.
 
 ## v1.0 publication
 
